@@ -1,6 +1,7 @@
 import { LogoutButton } from '@/features/auth/components/logout-button'
 import { requireCurrentUser } from '@/features/auth/queries'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import Link from 'next/link'
 
 export default async function DashboardPage() {
   const user = await requireCurrentUser('/login')
@@ -36,6 +37,47 @@ export default async function DashboardPage() {
               <dd>{user.email ?? 'Not available'}</dd>
             </div>
           </dl>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <Link
+            href="/claims"
+            className="rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:bg-muted"
+          >
+            <p className="text-xs uppercase tracking-[0.1em] text-foreground/60">
+              Employee
+            </p>
+            <h2 className="mt-1 text-lg font-semibold">My Claims</h2>
+            <p className="mt-1 text-sm text-foreground/70">
+              Submit and track daily expense claims.
+            </p>
+          </Link>
+
+          <Link
+            href="/approvals"
+            className="rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:bg-muted"
+          >
+            <p className="text-xs uppercase tracking-[0.1em] text-foreground/60">
+              Manager
+            </p>
+            <h2 className="mt-1 text-lg font-semibold">Pending Approvals</h2>
+            <p className="mt-1 text-sm text-foreground/70">
+              Review claims assigned at your approval level.
+            </p>
+          </Link>
+
+          <Link
+            href="/finance"
+            className="rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:bg-muted"
+          >
+            <p className="text-xs uppercase tracking-[0.1em] text-foreground/60">
+              Finance
+            </p>
+            <h2 className="mt-1 text-lg font-semibold">Finance Queue</h2>
+            <p className="mt-1 text-sm text-foreground/70">
+              Issue or reject claims after final approval.
+            </p>
+          </Link>
         </section>
       </div>
     </main>

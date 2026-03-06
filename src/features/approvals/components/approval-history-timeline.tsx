@@ -1,0 +1,38 @@
+import type { ApprovalAction } from '@/features/approvals/types'
+import { formatDatetime } from '@/lib/utils/date'
+
+type ApprovalHistoryTimelineProps = {
+  history: ApprovalAction[]
+}
+
+export function ApprovalHistoryTimeline({
+  history,
+}: ApprovalHistoryTimelineProps) {
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+      <h3 className="text-base font-semibold">Approval History</h3>
+      {history.length === 0 ? (
+        <p className="mt-2 text-sm text-foreground/70">
+          No actions recorded yet.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {history.map((entry) => (
+            <li
+              key={entry.id}
+              className="rounded-lg border border-border bg-background p-3 text-sm"
+            >
+              <p className="font-medium capitalize">{entry.action}</p>
+              <p className="text-foreground/70">Level {entry.approval_level}</p>
+              <p className="text-foreground/70">{entry.approver_email}</p>
+              <p className="text-foreground/70">
+                {formatDatetime(entry.acted_at)}
+              </p>
+              {entry.notes ? <p className="mt-1">{entry.notes}</p> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
