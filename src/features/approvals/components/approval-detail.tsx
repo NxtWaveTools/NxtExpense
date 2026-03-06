@@ -15,6 +15,10 @@ export function ApprovalDetail({ claim, items, owner }: ApprovalDetailProps) {
       <h2 className="text-lg font-semibold">Claim Review</h2>
       <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
         <div className="rounded-lg border border-border bg-background p-3">
+          <dt className="text-foreground/60">Claim ID</dt>
+          <dd className="font-medium">{claim.claim_number}</dd>
+        </div>
+        <div className="rounded-lg border border-border bg-background p-3">
           <dt className="text-foreground/60">Employee</dt>
           <dd>{owner.employee_name}</dd>
         </div>

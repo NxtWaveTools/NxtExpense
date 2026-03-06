@@ -31,6 +31,7 @@ export function FinanceClaimRow({
           onChange={(event) => onToggle(item.claim.id, event.target.checked)}
         />
       </td>
+      <td className="px-3 py-3 font-medium">{item.claim.claim_number}</td>
       <td className="px-3 py-3">{item.owner.employee_name}</td>
       <td className="px-3 py-3">{formatDate(item.claim.claim_date)}</td>
       <td className="px-3 py-3">{item.claim.work_location}</td>

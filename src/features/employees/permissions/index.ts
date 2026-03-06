@@ -1,5 +1,12 @@
 import type { ApprovalChain, Employee } from '@/features/employees/types'
 
+type DashboardAccess = {
+  canCreateClaims: boolean
+  canViewClaims: boolean
+  canViewApprovals: boolean
+  canViewFinanceQueue: boolean
+}
+
 const FOUR_WHEELER_ALLOWED_DESIGNATIONS = new Set([
   'State Business Head',
   'Zonal Business Head',
@@ -48,4 +55,27 @@ export function getNextApprovalLevel(
   }
 
   return null
+}
+
+export function getDashboardAccess(
+  employee: Employee,
+  hasApproverAccess: boolean
+): DashboardAccess {
+  const canViewFinanceQueue = employee.designation === 'Finance'
+  const canViewClaims = !canViewFinanceQueue
+
+  return {
+    canCreateClaims: canViewClaims,
+    canViewClaims,
+    canViewApprovals: hasApproverAccess,
+    canViewFinanceQueue,
+  }
+}
+
+export function canAccessEmployeeClaims(employee: Employee): boolean {
+  return employee.designation !== 'Finance'
+}
+
+export function canAccessApprovals(hasApproverAccess: boolean): boolean {
+  return hasApproverAccess
 }

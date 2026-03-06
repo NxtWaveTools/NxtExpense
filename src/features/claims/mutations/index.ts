@@ -33,7 +33,7 @@ type InsertClaimItemInput = {
 export async function insertClaim(
   supabase: SupabaseClient,
   input: InsertClaimInput
-): Promise<{ id: string }> {
+): Promise<{ id: string; claim_number: string }> {
   const { data, error } = await supabase
     .from('expense_claims')
     .insert({
@@ -51,14 +51,14 @@ export async function insertClaim(
       current_approval_level: input.currentApprovalLevel,
       submitted_at: input.submittedAt,
     })
-    .select('id')
+    .select('id, claim_number')
     .single()
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return data as { id: string }
+  return data as { id: string; claim_number: string }
 }
 
 export async function insertClaimItems(

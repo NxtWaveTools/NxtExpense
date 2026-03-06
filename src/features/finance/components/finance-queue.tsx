@@ -132,6 +132,7 @@ export function FinanceQueue({ queue }: FinanceQueueProps) {
             <thead>
               <tr className="border-b border-border text-left text-foreground/70">
                 <th className="px-3 py-2 font-medium">Select</th>
+                <th className="px-3 py-2 font-medium">Claim ID</th>
                 <th className="px-3 py-2 font-medium">Employee</th>
                 <th className="px-3 py-2 font-medium">Date</th>
                 <th className="px-3 py-2 font-medium">Location</th>

@@ -39,6 +39,49 @@ export async function getEmployeeById(
   return data as Employee | null
 }
 
+export async function hasApproverAssignments(
+  supabase: SupabaseClient,
+  approverEmail: string
+): Promise<boolean> {
+  const normalizedEmail = approverEmail.toLowerCase()
+
+  const [level1, level2, level3] = await Promise.all([
+    supabase
+      .from('employees')
+      .select('id')
+      .eq('approval_email_level_1', normalizedEmail)
+      .limit(1),
+    supabase
+      .from('employees')
+      .select('id')
+      .eq('approval_email_level_2', normalizedEmail)
+      .limit(1),
+    supabase
+      .from('employees')
+      .select('id')
+      .eq('approval_email_level_3', normalizedEmail)
+      .limit(1),
+  ])
+
+  if (level1.error) {
+    throw new Error(level1.error.message)
+  }
+
+  if (level2.error) {
+    throw new Error(level2.error.message)
+  }
+
+  if (level3.error) {
+    throw new Error(level3.error.message)
+  }
+
+  return (
+    (level1.data?.length ?? 0) > 0 ||
+    (level2.data?.length ?? 0) > 0 ||
+    (level3.data?.length ?? 0) > 0
+  )
+}
+
 export function getEmployeeApprovalChain(employee: Employee): ApprovalChain {
   return {
     level1: employee.approval_email_level_1,

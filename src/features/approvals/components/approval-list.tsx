@@ -31,6 +31,7 @@ export function ApprovalList({
         <table className="w-full min-w-[780px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-foreground/70">
+              <th className="px-3 py-2 font-medium">Claim ID</th>
               <th className="px-3 py-2 font-medium">Employee</th>
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Location</th>
@@ -41,6 +42,9 @@ export function ApprovalList({
           <tbody>
             {approvals.data.map((row) => (
               <tr key={row.claim.id} className="border-b border-border/70">
+                <td className="px-3 py-3 font-medium">
+                  {row.claim.claim_number}
+                </td>
                 <td className="px-3 py-3">{row.owner.employee_name}</td>
                 <td className="px-3 py-3">
                   {formatDate(row.claim.claim_date)}

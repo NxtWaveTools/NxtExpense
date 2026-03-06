@@ -7,6 +7,7 @@ import {
   getEmployeeByEmail,
 } from '@/features/employees/queries'
 import {
+  canAccessEmployeeClaims,
   canSubmitFourWheelerClaim,
   getNextApprovalLevel,
 } from '@/features/employees/permissions'
@@ -26,6 +27,7 @@ type ClaimActionResult = {
   ok: boolean
   error: string | null
   claimId?: string
+  claimNumber?: string
 }
 
 type ClaimItemDraft = {
@@ -110,6 +112,10 @@ export async function submitClaimAction(
   const employee = await getEmployeeByEmail(supabase, user.email)
   if (!employee) {
     return { ok: false, error: 'Employee profile not found.' }
+  }
+
+  if (!canAccessEmployeeClaims(employee)) {
+    return { ok: false, error: 'Your role cannot submit employee claims.' }
   }
 
   const input = parsed.data
@@ -242,7 +248,12 @@ export async function submitClaimAction(
     await updateClaimStatus(supabase, claim.id, 'finance_review', null)
   }
 
-  return { ok: true, error: null, claimId: claim.id }
+  return {
+    ok: true,
+    error: null,
+    claimId: claim.id,
+    claimNumber: claim.claim_number,
+  }
 }
 
 export async function getMyClaimsAction(cursor: string | null, limit = 10) {
@@ -256,7 +267,7 @@ export async function getMyClaimsAction(cursor: string | null, limit = 10) {
   }
 
   const employee = await getEmployeeByEmail(supabase, user.email)
-  if (!employee) {
+  if (!employee || !canAccessEmployeeClaims(employee)) {
     return {
       data: [],
       hasNextPage: false,

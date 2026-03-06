@@ -101,7 +101,11 @@ export function ClaimSubmissionForm({
         return
       }
 
-      toast.success('Claim submitted successfully.')
+      toast.success(
+        result.claimNumber
+          ? `Claim submitted successfully (${result.claimNumber}).`
+          : 'Claim submitted successfully.'
+      )
       router.push('/claims')
       router.refresh()
     } catch {

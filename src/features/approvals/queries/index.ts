@@ -10,7 +10,7 @@ import type {
 import { decodeCursor, encodeCursor } from '@/lib/utils/pagination'
 
 const CLAIM_COLUMNS =
-  'id, employee_id, claim_date, work_location, own_vehicle_used, vehicle_type, outstation_location, from_city, to_city, km_travelled, total_amount, status, current_approval_level, submitted_at, created_at, updated_at'
+  'id, claim_number, employee_id, claim_date, work_location, own_vehicle_used, vehicle_type, outstation_location, from_city, to_city, km_travelled, total_amount, status, current_approval_level, submitted_at, created_at, updated_at'
 
 export async function getPendingApprovalsPaginated(
   supabase: SupabaseClient,

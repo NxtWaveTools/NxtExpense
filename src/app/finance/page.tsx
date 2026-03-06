@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 import { requireCurrentUser } from '@/features/auth/queries'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -30,6 +31,14 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   return (
     <main className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
         <FinanceQueue queue={queue} />
       </div>
     </main>

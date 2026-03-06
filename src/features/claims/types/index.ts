@@ -37,6 +37,7 @@ export type ExpenseItemType = (typeof EXPENSE_ITEM_TYPE_OPTIONS)[number]
 
 export type Claim = {
   id: string
+  claim_number: string
   employee_id: string
   claim_date: string
   work_location: WorkLocation

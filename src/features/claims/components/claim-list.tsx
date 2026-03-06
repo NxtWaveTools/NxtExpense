@@ -36,6 +36,7 @@ export function ClaimList({ claims }: ClaimListProps) {
         <table className="w-full min-w-[780px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-foreground/70">
+              <th className="px-3 py-2 font-medium">Claim ID</th>
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Location</th>
               <th className="px-3 py-2 font-medium">Amount</th>
@@ -46,6 +47,7 @@ export function ClaimList({ claims }: ClaimListProps) {
           <tbody>
             {claims.data.map((claim) => (
               <tr key={claim.id} className="border-b border-border/70">
+                <td className="px-3 py-3 font-medium">{claim.claim_number}</td>
                 <td className="px-3 py-3">{formatDate(claim.claim_date)}</td>
                 <td className="px-3 py-3">{claim.work_location}</td>
                 <td className="px-3 py-3">
