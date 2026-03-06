@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 import { claimDateSchema } from '@/lib/validations/claim'
 
+const TRANSPORT_TYPE_VALUES = ['Rental Vehicle', 'Rapido/Uber/Ola'] as const
+
 const baseClaimShape = {
   claimDate: claimDateSchema,
 }
@@ -31,6 +33,7 @@ const outstationTaxiSchema = z.object({
   ...baseClaimShape,
   workLocation: z.literal('Field - Outstation'),
   ownVehicleUsed: z.literal(false),
+  transportType: z.enum(TRANSPORT_TYPE_VALUES),
   outstationLocation: z
     .string()
     .trim()

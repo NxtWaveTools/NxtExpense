@@ -32,6 +32,7 @@ describe('claimSubmissionSchema', () => {
       claimDate: '06/03/2026',
       workLocation: 'Field - Outstation',
       ownVehicleUsed: false,
+      transportType: 'Rapido/Uber/Ola',
       outstationLocation: 'Bengaluru',
       taxiAmount: 450,
     })

@@ -1,3 +1,5 @@
+import { Car } from 'lucide-react'
+
 import type { VehicleType } from '@/features/claims/types'
 
 type BaseLocationFieldsProps = {
@@ -17,7 +19,10 @@ export function BaseLocationFields({
         htmlFor="vehicleType"
         className="text-sm font-medium text-foreground/80"
       >
-        Vehicle Type
+        <span className="inline-flex items-center gap-2">
+          <Car className="size-4" aria-hidden="true" />
+          Vehicle Type
+        </span>
       </label>
       <select
         id="vehicleType"

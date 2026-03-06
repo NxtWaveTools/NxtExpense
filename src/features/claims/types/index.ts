@@ -10,6 +10,11 @@ export const WORK_LOCATION_OPTIONS = [
 
 export const VEHICLE_TYPE_OPTIONS = ['Two Wheeler', 'Four Wheeler'] as const
 
+export const TRANSPORT_TYPE_OPTIONS = [
+  'Rental Vehicle',
+  'Rapido/Uber/Ola',
+] as const
+
 export const CLAIM_STATUS_OPTIONS = [
   'draft',
   'submitted',
@@ -32,6 +37,7 @@ export const EXPENSE_ITEM_TYPE_OPTIONS = [
 
 export type WorkLocation = (typeof WORK_LOCATION_OPTIONS)[number]
 export type VehicleType = (typeof VEHICLE_TYPE_OPTIONS)[number]
+export type TransportType = (typeof TRANSPORT_TYPE_OPTIONS)[number]
 export type ClaimStatus = (typeof CLAIM_STATUS_OPTIONS)[number]
 export type ExpenseItemType = (typeof EXPENSE_ITEM_TYPE_OPTIONS)[number]
 
@@ -74,6 +80,7 @@ export type ClaimFormValues = {
   workLocation: WorkLocation
   ownVehicleUsed?: boolean
   vehicleType?: VehicleType
+  transportType?: TransportType
   outstationLocation?: string
   fromCity?: string
   toCity?: string

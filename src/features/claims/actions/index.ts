@@ -79,7 +79,7 @@ function buildClaimItemsAndTotal(
         items.push({
           itemType: 'taxi_bill',
           amount: input.taxiAmount,
-          description: 'Taxi bill submitted for outstation travel',
+          description: `${input.transportType} bill submitted for outstation travel`,
         })
       }
     }

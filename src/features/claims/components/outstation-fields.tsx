@@ -1,21 +1,25 @@
-import type { VehicleType } from '@/features/claims/types'
+import { Car, MapPin, Receipt, Route } from 'lucide-react'
+
+import type { TransportType, VehicleType } from '@/features/claims/types'
 
 type OutstationFieldsProps = {
   ownVehicleUsed: boolean
   vehicleType: VehicleType
+  transportType: TransportType
   outstationLocation: string
   fromCity: string
   toCity: string
-  kmTravelled: number
-  taxiAmount: number
+  kmTravelled: string
+  taxiAmount: string
   allowedVehicleTypes: readonly VehicleType[]
   onOwnVehicleUsedChange: (value: boolean) => void
   onVehicleTypeChange: (value: VehicleType) => void
+  onTransportTypeChange: (value: TransportType) => void
   onOutstationLocationChange: (value: string) => void
   onFromCityChange: (value: string) => void
   onToCityChange: (value: string) => void
-  onKmTravelledChange: (value: number) => void
-  onTaxiAmountChange: (value: number) => void
+  onKmTravelledChange: (value: string) => void
+  onTaxiAmountChange: (value: string) => void
 }
 
 export function OutstationFields(props: OutstationFieldsProps) {
@@ -26,7 +30,10 @@ export function OutstationFields(props: OutstationFieldsProps) {
           htmlFor="outstationLocation"
           className="text-sm font-medium text-foreground/80"
         >
-          Outstation Location
+          <span className="inline-flex items-center gap-2">
+            <MapPin className="size-4" aria-hidden="true" />
+            Outstation Location
+          </span>
         </label>
         <input
           id="outstationLocation"
@@ -77,7 +84,10 @@ export function OutstationFields(props: OutstationFieldsProps) {
               htmlFor="vehicleTypeOutstation"
               className="text-sm font-medium text-foreground/80"
             >
-              Vehicle Type
+              <span className="inline-flex items-center gap-2">
+                <Car className="size-4" aria-hidden="true" />
+                Vehicle Type
+              </span>
             </label>
             <select
               id="vehicleTypeOutstation"
@@ -118,7 +128,10 @@ export function OutstationFields(props: OutstationFieldsProps) {
           </div>
 
           <label className="space-y-2 text-sm font-medium text-foreground/80">
-            <span>KM Travelled</span>
+            <span className="inline-flex items-center gap-2">
+              <Route className="size-4" aria-hidden="true" />
+              KM Travelled
+            </span>
             <input
               name="kmTravelled"
               type="number"
@@ -126,27 +139,60 @@ export function OutstationFields(props: OutstationFieldsProps) {
               step="0.1"
               value={props.kmTravelled}
               onChange={(event) =>
-                props.onKmTravelledChange(Number(event.target.value || 0))
+                props.onKmTravelledChange(event.target.value)
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
           </label>
         </>
       ) : (
-        <label className="space-y-2 text-sm font-medium text-foreground/80">
-          <span>Taxi Bill Amount</span>
-          <input
-            name="taxiAmount"
-            type="number"
-            min={0}
-            step="0.01"
-            value={props.taxiAmount}
-            onChange={(event) =>
-              props.onTaxiAmountChange(Number(event.target.value || 0))
-            }
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          />
-        </label>
+        <>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-foreground/80">
+              Transport Type
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => props.onTransportTypeChange('Rental Vehicle')}
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  props.transportType === 'Rental Vehicle'
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border bg-background'
+                }`}
+              >
+                Rental Vehicle
+              </button>
+              <button
+                type="button"
+                onClick={() => props.onTransportTypeChange('Rapido/Uber/Ola')}
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  props.transportType === 'Rapido/Uber/Ola'
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border bg-background'
+                }`}
+              >
+                Rapido/Uber/Ola
+              </button>
+            </div>
+          </fieldset>
+
+          <label className="space-y-2 text-sm font-medium text-foreground/80">
+            <span className="inline-flex items-center gap-2">
+              <Receipt className="size-4" aria-hidden="true" />
+              Taxi Bill Amount
+            </span>
+            <input
+              name="taxiAmount"
+              type="number"
+              min={0}
+              step="0.01"
+              value={props.taxiAmount}
+              onChange={(event) => props.onTaxiAmountChange(event.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </label>
+        </>
       )}
     </div>
   )

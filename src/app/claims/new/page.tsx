@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 import { requireCurrentUser } from '@/features/auth/queries'
@@ -28,8 +29,9 @@ export default async function NewClaimPage() {
         <div className="mb-4">
           <Link
             href="/claims"
-            className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
           >
+            <ArrowLeft className="size-4" aria-hidden="true" />
             Back to My Claims
           </Link>
         </div>
