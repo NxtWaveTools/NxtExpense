@@ -6,12 +6,17 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 import { getEmployeeByEmail } from '@/features/employees/queries'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
-import { getFinanceQueueAction } from '@/features/finance/actions'
+import {
+  getFinanceHistoryAction,
+  getFinanceQueueAction,
+} from '@/features/finance/actions'
 import { FinanceQueue } from '@/features/finance/components/finance-queue'
+import { FinanceHistoryList } from '@/features/finance/components/finance-history-list'
 
 type FinancePageProps = {
   searchParams?: Promise<{
-    cursor?: string
+    queueCursor?: string
+    historyCursor?: string
   }>
 }
 
@@ -25,8 +30,12 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   }
 
   const resolvedSearch = await searchParams
-  const cursor = resolvedSearch?.cursor ?? null
-  const queue = await getFinanceQueueAction(cursor)
+  const queueCursor = resolvedSearch?.queueCursor ?? null
+  const historyCursor = resolvedSearch?.historyCursor ?? null
+  const [queue, history] = await Promise.all([
+    getFinanceQueueAction(queueCursor),
+    getFinanceHistoryAction(historyCursor),
+  ])
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
@@ -39,7 +48,10 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
             Back to Dashboard
           </Link>
         </div>
-        <FinanceQueue queue={queue} />
+        <div className="space-y-6">
+          <FinanceQueue queue={queue} />
+          <FinanceHistoryList history={history} />
+        </div>
       </div>
     </main>
   )

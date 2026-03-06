@@ -12,7 +12,7 @@ export const financeActionSchema = z.object({
 
 export const bulkFinanceActionSchema = z.object({
   claimIds: z.array(z.string().uuid('Invalid claim identifier.')).min(1),
-  action: z.literal('issued'),
+  action: z.enum(['issued', 'finance_rejected']),
   notes: z
     .string()
     .trim()

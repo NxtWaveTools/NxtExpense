@@ -6,6 +6,7 @@ import { getEmployeeByEmail } from '@/features/employees/queries'
 import { approvalActionSchema } from '@/features/approvals/validations'
 import {
   getClaimWithOwner,
+  getMyApprovalHistoryPaginated,
   getPendingApprovalsPaginated,
 } from '@/features/approvals/queries'
 import { canApproveAtLevel } from '@/features/approvals/permissions'
@@ -88,4 +89,20 @@ export async function getPendingApprovalsAction(
   }
 
   return getPendingApprovalsPaginated(supabase, user.email, cursor, limit)
+}
+
+export async function getApprovalHistoryAction(
+  cursor: string | null,
+  limit = 10
+) {
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.email) {
+    throw new Error('Unauthorized request.')
+  }
+
+  return getMyApprovalHistoryPaginated(supabase, user.email, cursor, limit)
 }

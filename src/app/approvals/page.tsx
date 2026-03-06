@@ -8,12 +8,17 @@ import {
   hasApproverAssignments,
 } from '@/features/employees/queries'
 
-import { getPendingApprovalsAction } from '@/features/approvals/actions'
+import {
+  getApprovalHistoryAction,
+  getPendingApprovalsAction,
+} from '@/features/approvals/actions'
 import { ApprovalList } from '@/features/approvals/components/approval-list'
+import { ApprovalHistoryList } from '@/features/approvals/components/approval-history-list'
 
 type ApprovalsPageProps = {
   searchParams?: Promise<{
-    cursor?: string
+    pendingCursor?: string
+    historyCursor?: string
   }>
 }
 
@@ -37,9 +42,13 @@ export default async function ApprovalsPage({
   }
 
   const resolvedSearch = await searchParams
-  const cursor = resolvedSearch?.cursor ?? null
+  const pendingCursor = resolvedSearch?.pendingCursor ?? null
+  const historyCursor = resolvedSearch?.historyCursor ?? null
 
-  const approvals = await getPendingApprovalsAction(cursor)
+  const [approvals, history] = await Promise.all([
+    getPendingApprovalsAction(pendingCursor),
+    getApprovalHistoryAction(historyCursor),
+  ])
 
   return (
     <main className="min-h-screen bg-background px-4 py-8">
@@ -52,7 +61,10 @@ export default async function ApprovalsPage({
             Back to Dashboard
           </Link>
         </div>
-        <ApprovalList approvals={approvals} />
+        <div className="space-y-6">
+          <ApprovalList approvals={approvals} />
+          <ApprovalHistoryList history={history} />
+        </div>
       </div>
     </main>
   )

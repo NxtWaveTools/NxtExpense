@@ -8,7 +8,10 @@ import {
   bulkFinanceActionSchema,
   financeActionSchema,
 } from '@/features/finance/validations'
-import { getFinanceQueuePaginated } from '@/features/finance/queries'
+import {
+  getFinanceHistoryPaginated,
+  getFinanceQueuePaginated,
+} from '@/features/finance/queries'
 
 type FinanceActionResult = {
   ok: boolean
@@ -71,9 +74,9 @@ export async function submitFinanceAction(payload: {
   }
 }
 
-export async function bulkIssueClaimsAction(payload: {
+export async function bulkFinanceClaimsAction(payload: {
   claimIds: string[]
-  action: 'issued'
+  action: 'issued' | 'finance_rejected'
   notes?: string
 }): Promise<FinanceActionResult> {
   const parsed = bulkFinanceActionSchema.safeParse(payload)
@@ -81,15 +84,16 @@ export async function bulkIssueClaimsAction(payload: {
   if (!parsed.success) {
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? 'Invalid bulk issue input.',
+      error: parsed.error.issues[0]?.message ?? 'Invalid bulk finance input.',
     }
   }
 
   try {
     const { supabase } = await getFinanceEmployeeContext()
 
-    const { error } = await supabase.rpc('bulk_issue_claims_atomic', {
+    const { error } = await supabase.rpc('bulk_finance_actions_atomic', {
       p_claim_ids: parsed.data.claimIds,
+      p_action: parsed.data.action,
       p_notes: parsed.data.notes ?? null,
     })
 
@@ -104,7 +108,7 @@ export async function bulkIssueClaimsAction(payload: {
       error:
         error instanceof Error
           ? error.message
-          : 'Unable to bulk issue selected claims.',
+          : 'Unable to process selected finance claims.',
     }
   }
 }
@@ -112,4 +116,12 @@ export async function bulkIssueClaimsAction(payload: {
 export async function getFinanceQueueAction(cursor: string | null, limit = 10) {
   const { supabase } = await getFinanceEmployeeContext()
   return getFinanceQueuePaginated(supabase, cursor, limit)
+}
+
+export async function getFinanceHistoryAction(
+  cursor: string | null,
+  limit = 10
+) {
+  const { supabase, user } = await getFinanceEmployeeContext()
+  return getFinanceHistoryPaginated(supabase, user.email ?? '', cursor, limit)
 }

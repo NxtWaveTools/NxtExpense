@@ -19,3 +19,11 @@ export type PendingApproval = {
 }
 
 export type PaginatedPendingApprovals = PaginatedResult<PendingApproval>
+
+export type ApprovalHistoryItem = {
+  claim: Claim
+  owner: Employee
+  action: ApprovalAction
+}
+
+export type PaginatedApprovalHistory = PaginatedResult<ApprovalHistoryItem>

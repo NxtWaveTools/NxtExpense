@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import {
-  bulkIssueClaimsAction,
+  bulkFinanceClaimsAction,
   submitFinanceAction,
 } from '@/features/finance/actions'
 import { FinanceClaimRow } from '@/features/finance/components/finance-claim-row'
@@ -27,6 +27,13 @@ export function FinanceQueue({ queue }: FinanceQueueProps) {
   const [error, setError] = useState<string | null>(null)
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
+  const allClaimIds = useMemo(
+    () => queue.data.map((item) => item.claim.id),
+    [queue.data]
+  )
+  const allSelected =
+    allClaimIds.length > 0 && selectedIds.length === allClaimIds.length
+  const partiallySelected = selectedIds.length > 0 && !allSelected
 
   function toggleClaim(claimId: string, checked: boolean) {
     setSelectedIds((current) => {
@@ -37,29 +44,37 @@ export function FinanceQueue({ queue }: FinanceQueueProps) {
     })
   }
 
-  async function handleBulkIssue() {
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? allClaimIds : [])
+  }
+
+  async function handleBulkAction(action: 'issued' | 'finance_rejected') {
     if (selectedIds.length === 0) return
     setIsSubmitting(true)
     setProcessingClaimId(null)
     setError(null)
 
     try {
-      const result = await bulkIssueClaimsAction({
+      const result = await bulkFinanceClaimsAction({
         claimIds: selectedIds,
-        action: 'issued',
+        action,
       })
 
       if (!result.ok) {
         setError(result.error)
-        toast.error(result.error ?? 'Unable to issue selected claims.')
+        toast.error(result.error ?? 'Unable to process selected claims.')
         return
       }
 
-      toast.success('Selected claims issued.')
+      toast.success(
+        action === 'issued'
+          ? 'Selected claims issued.'
+          : 'Selected claims rejected by finance.'
+      )
       setSelectedIds([])
       router.refresh()
     } catch {
-      const message = 'Unexpected error while issuing selected claims.'
+      const message = 'Unexpected error while processing selected claims.'
       setError(message)
       toast.error(message)
     } finally {
@@ -123,7 +138,11 @@ export function FinanceQueue({ queue }: FinanceQueueProps) {
       <div className="mt-4">
         <FinanceQueueToolbar
           selectedCount={selectedIds.length}
-          onBulkIssue={handleBulkIssue}
+          allSelected={allSelected}
+          partiallySelected={partiallySelected}
+          totalCount={allClaimIds.length}
+          onToggleSelectAll={toggleSelectAll}
+          onBulkAction={handleBulkAction}
           disabled={isSubmitting}
         />
 
@@ -162,7 +181,7 @@ export function FinanceQueue({ queue }: FinanceQueueProps) {
         <div className="mt-4 flex items-center justify-end">
           {queue.nextCursor ? (
             <Link
-              href={`/finance?cursor=${encodeURIComponent(queue.nextCursor)}`}
+              href={`/finance?queueCursor=${encodeURIComponent(queue.nextCursor)}`}
               className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium"
             >
               Next Page

@@ -19,3 +19,11 @@ export type FinanceQueueItem = {
 }
 
 export type PaginatedFinanceQueue = PaginatedResult<FinanceQueueItem>
+
+export type FinanceHistoryItem = {
+  claim: Claim
+  owner: Employee
+  action: FinanceAction
+}
+
+export type PaginatedFinanceHistory = PaginatedResult<FinanceHistoryItem>
