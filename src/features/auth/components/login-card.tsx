@@ -3,13 +3,10 @@ import { PasswordLoginForm } from '@/features/auth/components/password-login-for
 
 type LoginCardProps = {
   errorMessage: string | null
-  showDevelopmentForm: boolean
+  showPasswordForm: boolean
 }
 
-export function LoginCard({
-  errorMessage,
-  showDevelopmentForm,
-}: LoginCardProps) {
+export function LoginCard({ errorMessage, showPasswordForm }: LoginCardProps) {
   return (
     <section className="w-full max-w-md rounded-2xl border border-border bg-surface p-7 shadow-sm">
       <div className="space-y-2">
@@ -29,12 +26,12 @@ export function LoginCard({
 
         <MicrosoftLoginButton />
 
-        {showDevelopmentForm ? (
+        {showPasswordForm ? (
           <>
             <div className="h-px bg-border" />
             <PasswordLoginForm />
             <p className="text-xs text-foreground/60">
-              Email/password login is enabled for development only.
+              Email/password login is enabled for internal testing.
             </p>
           </>
         ) : null}

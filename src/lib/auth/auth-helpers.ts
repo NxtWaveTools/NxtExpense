@@ -11,7 +11,13 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
 }
 
 export function isDevelopmentAuthEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production'
+  if (process.env.NODE_ENV !== 'production') return true
+
+  const productionOverride = process.env.ALLOW_PASSWORD_LOGIN_IN_PROD
+  if (!productionOverride) return false
+
+  const normalizedValue = productionOverride.trim().toLowerCase()
+  return normalizedValue === 'true' || normalizedValue === '1'
 }
 
 /**

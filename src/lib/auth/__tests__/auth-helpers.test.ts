@@ -35,11 +35,18 @@ describe('hasInvalidAzureTenantPath', () => {
 })
 
 describe('isDevelopmentAuthEnabled', () => {
-  const original = process.env.NODE_ENV
+  const originalNodeEnv = process.env.NODE_ENV
+  const originalProductionFlag = process.env.ALLOW_PASSWORD_LOGIN_IN_PROD
 
   afterEach(() => {
-    // restore
-    vi.stubEnv('NODE_ENV', original)
+    vi.stubEnv('NODE_ENV', originalNodeEnv)
+
+    if (originalProductionFlag === undefined) {
+      delete process.env.ALLOW_PASSWORD_LOGIN_IN_PROD
+      return
+    }
+
+    vi.stubEnv('ALLOW_PASSWORD_LOGIN_IN_PROD', originalProductionFlag)
   })
 
   it('returns true when NODE_ENV is development', () => {
@@ -52,9 +59,28 @@ describe('isDevelopmentAuthEnabled', () => {
     expect(isDevelopmentAuthEnabled()).toBe(true)
   })
 
-  it('returns false when NODE_ENV is production', () => {
+  it('returns false in production when the flag is missing', () => {
     vi.stubEnv('NODE_ENV', 'production')
+    delete process.env.ALLOW_PASSWORD_LOGIN_IN_PROD
     expect(isDevelopmentAuthEnabled()).toBe(false)
+  })
+
+  it('returns false in production when the flag is not a truthy value', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('ALLOW_PASSWORD_LOGIN_IN_PROD', 'false')
+    expect(isDevelopmentAuthEnabled()).toBe(false)
+  })
+
+  it('returns true in production when the flag is true', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('ALLOW_PASSWORD_LOGIN_IN_PROD', 'true')
+    expect(isDevelopmentAuthEnabled()).toBe(true)
+  })
+
+  it('returns true in production when the flag is 1', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('ALLOW_PASSWORD_LOGIN_IN_PROD', '1')
+    expect(isDevelopmentAuthEnabled()).toBe(true)
   })
 })
 
