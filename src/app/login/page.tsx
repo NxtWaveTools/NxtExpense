@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     ? messageValue[0]
     : messageValue
   const errorMessage = getLoginErrorMessage(errorCode)
-  const showDevelopmentForm = isDevelopmentAuthEnabled()
+  const showPasswordForm = isDevelopmentAuthEnabled()
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-background px-4 py-8">
@@ -40,7 +40,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       </div>
       <LoginCard
         errorMessage={errorMessage}
-        showDevelopmentForm={showDevelopmentForm}
+        showPasswordForm={showPasswordForm}
       />
     </main>
   )

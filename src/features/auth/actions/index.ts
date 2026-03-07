@@ -39,7 +39,10 @@ export async function signInWithPasswordAction(
   formData: FormData
 ): Promise<AuthActionState> {
   if (!isDevelopmentAuthEnabled()) {
-    return { error: 'Email/password login is disabled in production.' }
+    return {
+      error:
+        'Email/password login is disabled in production. Set ALLOW_PASSWORD_LOGIN_IN_PROD=true to enable it.',
+    }
   }
 
   const parsedCredentials = emailPasswordLoginSchema.safeParse({

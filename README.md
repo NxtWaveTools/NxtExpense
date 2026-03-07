@@ -5,7 +5,7 @@ This project uses Next.js App Router with Supabase Auth.
 ## Authentication Flows
 
 - Primary: Microsoft OAuth via Supabase (`azure` provider)
-- Development only: Email/password login
+- Email/password login (temporarily enabled in production for internal testing)
 - Post-login redirect: `/dashboard`
 - Logout redirect: `/login`
 
@@ -24,6 +24,7 @@ Set these in `.env.local`:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_AUTH_CALLBACK_URL`
 - `NEXT_PUBLIC_APP_URL`
+- `ALLOW_PASSWORD_LOGIN_IN_PROD` (set to `true` or `1` to enable email/password login in production)
 
 ## Run Locally
 
