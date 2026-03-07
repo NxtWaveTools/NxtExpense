@@ -227,7 +227,6 @@ export async function getFinanceHistoryPaginated(
   }
 
   const claimData = claimResult.data
-  const claimError = null
 
   const actorNameByEmail = new Map<string, string>(
     (actorResult.data ?? []).map((e) => [
