@@ -49,3 +49,8 @@ test-plan.md
 test-execution-report.md
 edge-case-catalog.md
 senior-dev-qa-responses.md
+admin-panel-requirements.md
+database-migration-plan.md
+hardcoded-audit-report.md
+refactoring-checklist.md
+proposed-schema.sql

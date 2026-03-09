@@ -35,7 +35,7 @@ vi.mock('@/features/approvals/utils/history-filters', () => ({
   normalizeApprovalHistoryFilters: mocks.normalizeApprovalHistoryFilters,
 }))
 
-import { GET, POST } from '@/app/approvals/export/route'
+import { GET, POST } from '@/app/(app)/approvals/export/route'
 
 describe('approvals export route', () => {
   beforeEach(() => {

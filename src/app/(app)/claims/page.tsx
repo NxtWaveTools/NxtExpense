@@ -103,28 +103,22 @@ export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
   })
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4">
-          <Link
-            href="/dashboard"
-            className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-        <div className="mb-6">
-          <ClaimsFiltersBar
-            filters={normalizedFilters}
+    <>
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-6">
+            <ClaimsFiltersBar
+              filters={normalizedFilters}
+              statusCatalog={statusCatalog}
+            />
+          </div>
+          <ClaimList
+            claims={claims}
             statusCatalog={statusCatalog}
+            pagination={claimsPagination}
           />
         </div>
-        <ClaimList
-          claims={claims}
-          statusCatalog={statusCatalog}
-          pagination={claimsPagination}
-        />
-      </div>
-    </main>
+      </main>
+    </>
   )
 }

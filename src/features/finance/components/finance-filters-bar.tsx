@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -12,6 +13,8 @@ import type {
 type FinanceFiltersBarProps = {
   filters: FinanceFilters
   options: FinanceFilterOptions
+  exportCurrentPageHref: string
+  exportAllHref: string
 }
 
 function isFinanceActionFilter(value: string): value is FinanceActionFilter {
@@ -21,6 +24,8 @@ function isFinanceActionFilter(value: string): value is FinanceActionFilter {
 export function FinanceFiltersBar({
   filters,
   options,
+  exportCurrentPageHref,
+  exportAllHref,
 }: FinanceFiltersBarProps) {
   const router = useRouter()
 
@@ -266,6 +271,18 @@ export function FinanceFiltersBar({
           >
             Clear Filters
           </button>
+          <Link
+            href={exportCurrentPageHref}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          >
+            Download Current Page CSV
+          </Link>
+          <Link
+            href={exportAllHref}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          >
+            Download All Filtered CSV
+          </Link>
         </div>
       </form>
     </section>

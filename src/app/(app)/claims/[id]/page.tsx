@@ -63,48 +63,50 @@ export default async function ClaimDetailPage({
   ])
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={backHref}
-              className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
-            >
-              {backLabel}
-            </Link>
-            {canModifyClaim ? (
+    <>
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
-                href={`/claims/new?editClaimId=${claimWithItems.claim.id}`}
-                className="inline-flex rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
+                href={backHref}
+                className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
               >
-                Modify And Resubmit
+                {backLabel}
               </Link>
-            ) : null}
+              {canModifyClaim ? (
+                <Link
+                  href={`/claims/new?editClaimId=${claimWithItems.claim.id}`}
+                  className="inline-flex rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
+                >
+                  Modify And Resubmit
+                </Link>
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ClaimDetail
-            claim={claimWithItems.claim}
-            items={claimWithItems.items}
-            employeeName={owner.employee_name}
-            owner={owner}
-          />
-          <div className="space-y-6">
-            <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="text-base font-semibold">Current Status</h3>
-              <div className="mt-3">
-                <ClaimStatusBadge
-                  status={claimWithItems.claim.status}
-                  statusCatalog={statusCatalog}
-                />
-              </div>
-            </section>
-            <ClaimHistoryTimeline history={history} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ClaimDetail
+              claim={claimWithItems.claim}
+              items={claimWithItems.items}
+              employeeName={owner.employee_name}
+              owner={owner}
+            />
+            <div className="space-y-6">
+              <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+                <h3 className="text-base font-semibold">Current Status</h3>
+                <div className="mt-3">
+                  <ClaimStatusBadge
+                    status={claimWithItems.claim.status}
+                    statusCatalog={statusCatalog}
+                  />
+                </div>
+              </section>
+              <ClaimHistoryTimeline history={history} />
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   )
 }

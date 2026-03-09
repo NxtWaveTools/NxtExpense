@@ -158,30 +158,44 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     nextCursor: history.nextCursor,
   })
 
+  const currentPageCsvParams = addFinanceFiltersToParams(
+    new URLSearchParams(),
+    normalizedFilters
+  )
+  currentPageCsvParams.set('mode', 'page')
+  if (historyCursor) {
+    currentPageCsvParams.set('historyCursor', historyCursor)
+  }
+
+  const allRowsCsvParams = addFinanceFiltersToParams(
+    new URLSearchParams(),
+    normalizedFilters
+  )
+  allRowsCsvParams.set('mode', 'all')
+
+  const exportCurrentPageHref = `/finance/export?${currentPageCsvParams.toString()}`
+  const exportAllHref = `/finance/export?${allRowsCsvParams.toString()}`
+
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4">
-          <Link
-            href="/dashboard"
-            className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
-          >
-            Back to Dashboard
-          </Link>
+    <>
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="space-y-6">
+            <FinanceFiltersBar
+              filters={normalizedFilters}
+              options={filterOptions}
+              exportCurrentPageHref={exportCurrentPageHref}
+              exportAllHref={exportAllHref}
+            />
+            <FinanceQueue queue={queue} pagination={queuePagination} />
+            <FinanceHistoryList
+              history={history}
+              statusCatalog={statusCatalog}
+              pagination={historyPagination}
+            />
+          </div>
         </div>
-        <div className="space-y-6">
-          <FinanceFiltersBar
-            filters={normalizedFilters}
-            options={filterOptions}
-          />
-          <FinanceQueue queue={queue} pagination={queuePagination} />
-          <FinanceHistoryList
-            history={history}
-            statusCatalog={statusCatalog}
-            pagination={historyPagination}
-          />
-        </div>
-      </div>
-    </main>
+      </main>
+    </>
   )
 }

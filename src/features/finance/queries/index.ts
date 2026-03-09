@@ -293,3 +293,31 @@ export async function getFinanceHistoryPaginated(
     limit,
   }
 }
+
+export async function getAllFilteredFinanceHistory(
+  supabase: SupabaseClient,
+  filters: FinanceFilters,
+  batchSize = 200
+): Promise<FinanceHistoryItem[]> {
+  const allRows: FinanceHistoryItem[] = []
+  let cursor: string | null = null
+
+  for (;;) {
+    const page = await getFinanceHistoryPaginated(
+      supabase,
+      cursor,
+      batchSize,
+      filters
+    )
+
+    allRows.push(...page.data)
+
+    if (!page.hasNextPage || !page.nextCursor) {
+      break
+    }
+
+    cursor = page.nextCursor
+  }
+
+  return allRows
+}

@@ -147,25 +147,27 @@ export default async function NewClaimPage({
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4">
-          <Link
-            href="/claims"
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to My Claims
-          </Link>
+    <>
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-4">
+            <Link
+              href="/claims"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Back to My Claims
+            </Link>
+          </div>
+          <ClaimSubmissionForm
+            allowedVehicleTypes={allowedVehicleTypes}
+            workLocationOptions={WORK_LOCATION_OPTIONS}
+            transportTypeOptions={TRANSPORT_TYPE_OPTIONS}
+            claimRateSnapshot={claimRateSnapshot}
+            initialValues={initialValues}
+          />
         </div>
-        <ClaimSubmissionForm
-          allowedVehicleTypes={allowedVehicleTypes}
-          workLocationOptions={WORK_LOCATION_OPTIONS}
-          transportTypeOptions={TRANSPORT_TYPE_OPTIONS}
-          claimRateSnapshot={claimRateSnapshot}
-          initialValues={initialValues}
-        />
-      </div>
-    </main>
+      </main>
+    </>
   )
 }

@@ -184,30 +184,27 @@ export default async function ApprovalsPage({
   const exportAllHref = `/approvals/export?${allRowsCsvParams.toString()}`
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4">
-          <Link
-            href="/dashboard"
-            className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
-          >
-            Back to Dashboard
-          </Link>
+    <>
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="space-y-6">
+            <ApprovalFiltersBar
+              filters={normalizedFilters}
+              exportCurrentPageHref={exportCurrentPageHref}
+              exportAllHref={exportAllHref}
+            />
+            <ApprovalList
+              approvals={approvals}
+              pagination={pendingPagination}
+            />
+            <ApprovalHistoryList
+              history={history}
+              statusCatalog={statusCatalog}
+              pagination={historyPagination}
+            />
+          </div>
         </div>
-        <div className="space-y-6">
-          <ApprovalFiltersBar
-            filters={normalizedFilters}
-            exportCurrentPageHref={exportCurrentPageHref}
-            exportAllHref={exportAllHref}
-          />
-          <ApprovalList approvals={approvals} pagination={pendingPagination} />
-          <ApprovalHistoryList
-            history={history}
-            statusCatalog={statusCatalog}
-            pagination={historyPagination}
-          />
-        </div>
-      </div>
-    </main>
+      </main>
+    </>
   )
 }

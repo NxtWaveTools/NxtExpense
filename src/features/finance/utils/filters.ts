@@ -1,4 +1,8 @@
-import type { FinanceFilters } from '@/features/finance/types'
+import { formatDate, formatDatetime } from '@/lib/utils/date'
+import type {
+  FinanceFilters,
+  FinanceHistoryItem,
+} from '@/features/finance/types'
 import { financeFiltersSchema } from '@/features/finance/validations'
 
 type FinanceFilterInput = Partial<
@@ -117,4 +121,47 @@ export function toIstDayStart(date: string | null): string | null {
 
 export function toIstDayEnd(date: string | null): string | null {
   return date ? `${date}${IST_DAY_END}` : null
+}
+
+function normalizeCsvCell(value: string): string {
+  const escaped = value.replaceAll('"', '""')
+  return `"${escaped}"`
+}
+
+function toFriendlyAction(value: string): string {
+  return value.replaceAll('_', ' ')
+}
+
+export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
+  const headers = [
+    'Claim ID',
+    'Employee',
+    'Employee Designation',
+    'Claim Date',
+    'Work Location',
+    'Total Amount',
+    'Action',
+    'Action By',
+    'Action Date',
+    'Current Status',
+  ]
+
+  const bodyRows = rows.map((row) => [
+    row.claim.claim_number,
+    row.owner.employee_name,
+    row.owner.designation,
+    formatDate(row.claim.claim_date),
+    row.claim.work_location,
+    `Rs. ${row.claim.total_amount.toFixed(2)}`,
+    toFriendlyAction(row.action.action),
+    row.action.actor_email,
+    formatDatetime(row.action.acted_at),
+    toFriendlyAction(row.claim.status),
+  ])
+
+  return [headers, ...bodyRows]
+    .map((cells) =>
+      cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
+    )
+    .join('\n')
 }
