@@ -5,26 +5,31 @@ import { requireCurrentUser } from '@/features/auth/queries'
 import { ClaimDetail } from '@/features/claims/components/claim-detail'
 import { ClaimHistoryTimeline } from '@/features/claims/components/claim-history-timeline'
 import { ClaimStatusBadge } from '@/features/claims/components/claim-status-badge'
-import {
-  getClaimById,
-  getClaimHistory,
-  getClaimStatusCatalog,
-} from '@/features/claims/queries'
+import { getClaimById, getClaimHistory } from '@/features/claims/queries'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import {
   getEmployeeByEmail,
   getEmployeeById,
-} from '@/features/employees/queries'
+} from '@/lib/services/employee-service'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 type ClaimDetailPageProps = {
   params: Promise<{
     id: string
   }>
+  searchParams: Promise<{
+    from?: string
+  }>
+}
+
+const SOURCE_BACK_CONFIG: Record<string, { href: string; label: string }> = {
+  approvals: { href: '/approvals', label: 'Back to Approvals' },
+  finance: { href: '/finance', label: 'Back to Finance' },
 }
 
 export default async function ClaimDetailPage({
   params,
+  searchParams,
 }: ClaimDetailPageProps) {
   const user = await requireCurrentUser('/login')
   const supabase = await createSupabaseServerClient()
@@ -49,62 +54,59 @@ export default async function ClaimDetailPage({
     notFound()
   }
 
-  const isClaimOwner = owner.id === employee.id
-  const canModifyClaim =
-    isClaimOwner && claimWithItems.claim.status === 'returned_for_modification'
-  const backHref = canAccessEmployeeClaims(employee) ? '/claims' : '/dashboard'
-  const backLabel = canAccessEmployeeClaims(employee)
-    ? 'Back to My Claims'
-    : 'Back to Dashboard'
+  const { from } = await searchParams
+  const sourceConfig = from ? SOURCE_BACK_CONFIG[from] : null
 
-  const [history, statusCatalog] = await Promise.all([
-    getClaimHistory(supabase, id),
-    getClaimStatusCatalog(supabase),
-  ])
+  let backHref: string
+  let backLabel: string
+  if (sourceConfig) {
+    backHref = sourceConfig.href
+    backLabel = sourceConfig.label
+  } else {
+    const hasClaimAccess = await canAccessEmployeeClaims(supabase, employee)
+    backHref = hasClaimAccess ? '/claims' : '/dashboard'
+    backLabel = hasClaimAccess ? 'Back to My Claims' : 'Back to Dashboard'
+  }
+
+  const [history] = await Promise.all([getClaimHistory(supabase, id)])
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="mb-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={backHref}
-              className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
-            >
-              {backLabel}
-            </Link>
-            {canModifyClaim ? (
+    <>
+      <main className="min-h-screen bg-background px-4 py-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
-                href={`/claims/new?editClaimId=${claimWithItems.claim.id}`}
-                className="inline-flex rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
+                href={backHref}
+                className="inline-flex rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium"
               >
-                Modify And Resubmit
+                {backLabel}
               </Link>
-            ) : null}
+            </div>
           </div>
-        </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ClaimDetail
-            claim={claimWithItems.claim}
-            items={claimWithItems.items}
-            employeeName={owner.employee_name}
-            owner={owner}
-          />
-          <div className="space-y-6">
-            <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="text-base font-semibold">Current Status</h3>
-              <div className="mt-3">
-                <ClaimStatusBadge
-                  status={claimWithItems.claim.status}
-                  statusCatalog={statusCatalog}
-                />
-              </div>
-            </section>
-            <ClaimHistoryTimeline history={history} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ClaimDetail
+              claim={claimWithItems.claim}
+              items={claimWithItems.items}
+              employeeName={owner.employee_name}
+              owner={owner}
+            />
+            <div className="space-y-6">
+              <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+                <h3 className="text-base font-semibold">Current Status</h3>
+                <div className="mt-3">
+                  <ClaimStatusBadge
+                    statusName={claimWithItems.claim.statusName}
+                    statusDisplayColor={claimWithItems.claim.statusDisplayColor}
+                  />
+                </div>
+              </section>
+              <ClaimHistoryTimeline history={history} />
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   )
 }
