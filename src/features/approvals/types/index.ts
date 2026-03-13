@@ -51,6 +51,7 @@ export type ApprovalActorFilter = 'all' | 'sbh' | 'hod' | 'finance'
 export type ApprovalHistoryFilters = {
   employeeName: string | null
   actorFilter: ApprovalActorFilter
+  claimStatus: string | null
   claimDate: string | null
   hodApprovedFrom: string | null
   hodApprovedTo: string | null
@@ -61,6 +62,7 @@ export type ApprovalHistoryFilters = {
 export type PendingApprovalsFilters = {
   employeeName: string | null
   actorFilter: ApprovalActorFilter
+  claimStatus: string | null
 }
 
 export type ApprovalHistoryRecord = {

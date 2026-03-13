@@ -26,10 +26,12 @@ function isPublicAuthRoute(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { response, user } = await refreshAuthSession(request)
+  const { response, user, supabase } = await refreshAuthSession(request)
   const { pathname } = request.nextUrl
   const hasSession = Boolean(user)
-  const hasAllowedDomain = user ? isAllowedCorporateEmail(user.email) : false
+  const hasAllowedDomain = user
+    ? await isAllowedCorporateEmail(supabase, user.email)
+    : false
 
   if (isProtectedRoute(pathname) && !hasAllowedDomain) {
     const loginUrl = request.nextUrl.clone()

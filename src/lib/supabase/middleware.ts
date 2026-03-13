@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { getSupabasePublicEnv } from '@/lib/supabase/env'
@@ -7,6 +7,7 @@ import { getSupabasePublicEnv } from '@/lib/supabase/env'
 export type RefreshedSession = {
   response: NextResponse
   user: User | null
+  supabase: SupabaseClient
 }
 
 export async function refreshAuthSession(
@@ -36,5 +37,5 @@ export async function refreshAuthSession(
     data: { user },
   } = await supabase.auth.getUser()
 
-  return { response, user }
+  return { response, user, supabase }
 }

@@ -15,6 +15,7 @@ describe('approvals pagination flow e2e scenario', () => {
     const normalizedFilters = normalizeApprovalHistoryFilters({
       employeeName: 'Rahul',
       actorFilter: 'finance',
+      claimStatus: 'L3_PENDING_FINANCE_REVIEW',
       claimDate: '2026-03-01',
       hodApprovedFrom: '2026-03-01',
       hodApprovedTo: '2026-03-31',
@@ -45,6 +46,7 @@ describe('approvals pagination flow e2e scenario', () => {
 
     const page2Params = new URLSearchParams(page1.nextHref?.split('?')[1] ?? '')
     expect(page2Params.get('actorFilter')).toBe('finance')
+    expect(page2Params.get('claimStatus')).toBe('L3_PENDING_FINANCE_REVIEW')
     expect(page2Params.get('employeeName')).toBe('Rahul')
     expect(page2Params.get('historyCursor')).toBe('cursor-page-2')
 
@@ -71,6 +73,7 @@ describe('approvals pagination flow e2e scenario', () => {
     const backToPage1 = new URLSearchParams(page2.backHref?.split('?')[1] ?? '')
     expect(backToPage1.get('historyCursor')).toBeNull()
     expect(backToPage1.get('actorFilter')).toBe('finance')
+    expect(backToPage1.get('claimStatus')).toBe('L3_PENDING_FINANCE_REVIEW')
     expect(backToPage1.get('employeeName')).toBe('Rahul')
   })
 

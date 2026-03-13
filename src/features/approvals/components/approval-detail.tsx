@@ -39,7 +39,9 @@ export function ApprovalDetail({ claim, items, owner }: ApprovalDetailProps) {
         <div className="rounded-lg border border-border bg-background p-3">
           <dt className="text-foreground/60">Employee</dt>
           <dd>{owner.employee_name}</dd>
-          <dd className="text-xs text-foreground/60">{owner.designation}</dd>
+          <dd className="text-xs text-foreground/60">
+            {owner.designations?.designation_name ?? ''}
+          </dd>
         </div>
         <div className="rounded-lg border border-border bg-background p-3">
           <dt className="text-foreground/60">Claim Date</dt>

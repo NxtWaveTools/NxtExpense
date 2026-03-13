@@ -95,6 +95,7 @@ function getPendingFilters(
   return {
     employeeName: normalizedFilters.employeeName,
     actorFilter: normalizedFilters.actorFilter,
+    claimStatus: normalizedFilters.claimStatus,
   }
 }
 

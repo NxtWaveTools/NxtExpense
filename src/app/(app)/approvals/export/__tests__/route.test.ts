@@ -62,6 +62,7 @@ describe('approvals export route', () => {
     mocks.normalizeApprovalHistoryFilters.mockReturnValue({
       employeeName: null,
       actorFilter: 'all',
+      claimStatus: null,
       claimDate: null,
       hodApprovedFrom: null,
       hodApprovedTo: null,

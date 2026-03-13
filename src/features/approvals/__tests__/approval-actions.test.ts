@@ -163,6 +163,18 @@ describe('approvalHistoryFiltersSchema', () => {
     expect(parsed.success).toBe(true)
     if (parsed.success) {
       expect(parsed.data.actorFilter).toBe('all')
+      expect(parsed.data.claimStatus).toBeUndefined()
+    }
+  })
+
+  it('accepts claimStatus filter', () => {
+    const parsed = approvalHistoryFiltersSchema.safeParse({
+      claimStatus: 'L1_PENDING',
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.claimStatus).toBe('L1_PENDING')
     }
   })
 

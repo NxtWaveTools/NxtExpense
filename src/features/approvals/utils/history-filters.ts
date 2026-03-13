@@ -55,6 +55,7 @@ export function normalizeApprovalHistoryFilters(
   return {
     employeeName: normalizeText(value.employeeName),
     actorFilter: value.actorFilter,
+    claimStatus: normalizeText(value.claimStatus),
     claimDate: value.claimDate ?? null,
     hodApprovedFrom: value.hodApprovedFrom ?? null,
     hodApprovedTo: value.hodApprovedTo ?? null,
@@ -95,6 +96,10 @@ export function addApprovalFiltersToParams(
 
   if (filters.actorFilter !== 'all') {
     params.set('actorFilter', filters.actorFilter)
+  }
+
+  if (filters.claimStatus) {
+    params.set('claimStatus', filters.claimStatus)
   }
 
   if (filters.claimDate) {

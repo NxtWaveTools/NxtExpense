@@ -22,6 +22,7 @@ describe('approval history filter utilities', () => {
     expect(normalized).toEqual({
       employeeName: 'John',
       actorFilter: 'finance',
+      claimStatus: null,
       claimDate: '2026-03-07',
       hodApprovedFrom: '2026-03-01',
       hodApprovedTo: '2026-03-02',
@@ -51,6 +52,7 @@ describe('approval history filter utilities', () => {
     const params = addApprovalFiltersToParams(new URLSearchParams(), {
       employeeName: 'Alex',
       actorFilter: 'finance',
+      claimStatus: 'L3_PENDING_FINANCE_REVIEW',
       claimDate: '2026-03-01',
       hodApprovedFrom: '2026-03-01',
       hodApprovedTo: '2026-03-07',
@@ -60,6 +62,7 @@ describe('approval history filter utilities', () => {
 
     expect(params.get('employeeName')).toBe('Alex')
     expect(params.get('actorFilter')).toBe('finance')
+    expect(params.get('claimStatus')).toBe('L3_PENDING_FINANCE_REVIEW')
     expect(params.get('claimDate')).toBe('2026-03-01')
     expect(params.get('hodApprovedFrom')).toBe('2026-03-01')
     expect(params.get('hodApprovedTo')).toBe('2026-03-07')

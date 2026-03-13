@@ -2,6 +2,7 @@ import { requireCurrentUser } from '@/features/auth/queries'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { canAccessApprovals } from '@/features/employees/permissions'
+import { getClaimStatusCatalog } from '@/features/claims/queries'
 import {
   getEmployeeByEmail,
   hasApproverAssignments,
@@ -35,6 +36,7 @@ type ApprovalsPageProps = {
     pendingTrail?: string
     historyCursor?: string
     historyTrail?: string
+    claimStatus?: string
     employeeName?: string
     actorFilter?: string
     claimDate?: string
@@ -75,6 +77,7 @@ export default async function ApprovalsPage({
       : (resolvedSearch?.claimDateFrom ?? resolvedSearch?.claimDateTo)
 
   const rawFilters = {
+    claimStatus: resolvedSearch?.claimStatus,
     employeeName: resolvedSearch?.employeeName,
     actorFilter: resolvedSearch?.actorFilter,
     claimDate: resolvedSearch?.claimDate ?? legacyClaimDate,
@@ -88,6 +91,7 @@ export default async function ApprovalsPage({
       return normalizeApprovalHistoryFilters(rawFilters)
     } catch {
       return {
+        claimStatus: null,
         employeeName: null,
         actorFilter: 'all' as const,
         claimDate: null,
@@ -100,6 +104,7 @@ export default async function ApprovalsPage({
   })()
 
   const normalizedFilterParams = {
+    claimStatus: normalizedFilters.claimStatus ?? undefined,
     employeeName: normalizedFilters.employeeName ?? undefined,
     actorFilter: normalizedFilters.actorFilter,
     claimDate: normalizedFilters.claimDate ?? undefined,
@@ -140,9 +145,10 @@ export default async function ApprovalsPage({
 
   const paginationQuery = Object.fromEntries(canonicalParams.entries())
 
-  const [approvals, history] = await Promise.all([
+  const [approvals, history, statusCatalog] = await Promise.all([
     getPendingApprovalsAction(pendingCursor, 10, normalizedFilterParams),
     getApprovalHistoryAction(historyCursor, 10, normalizedFilterParams),
+    getClaimStatusCatalog(supabase),
   ])
 
   const pendingPagination = buildCursorNavigationLinks({
@@ -190,6 +196,7 @@ export default async function ApprovalsPage({
           <div className="space-y-6">
             <ApprovalFiltersBar
               filters={normalizedFilters}
+              statusCatalog={statusCatalog}
               exportCurrentPageHref={exportCurrentPageHref}
               exportAllHref={exportAllHref}
             />

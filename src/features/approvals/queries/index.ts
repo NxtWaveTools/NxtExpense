@@ -26,6 +26,7 @@ export async function getPendingApprovalsPaginated(
   filters: PendingApprovalsFilters = {
     employeeName: null,
     actorFilter: 'all',
+    claimStatus: null,
   }
 ) {
   const lowerEmail = approverEmail.toLowerCase()
@@ -39,7 +40,7 @@ export async function getPendingApprovalsPaginated(
       .maybeSingle(),
     supabase
       .from('claim_statuses')
-      .select('id')
+      .select('id, status_code')
       .not('approval_level', 'is', null)
       .eq('is_rejection', false)
       .eq('is_terminal', false)
@@ -56,7 +57,20 @@ export async function getPendingApprovalsPaginated(
   }
 
   const actorEmployeeId = actorResult.data.id
-  const pendingStatusIds = (pendingStatusesResult.data ?? []).map((s) => s.id)
+  const pendingStatuses = pendingStatusesResult.data ?? []
+
+  let pendingStatusIds = pendingStatuses.map((status) => status.id)
+  const normalizedStatusFilter = filters.claimStatus?.trim().toUpperCase()
+
+  if (normalizedStatusFilter) {
+    pendingStatusIds = pendingStatuses
+      .filter((status) => status.status_code === normalizedStatusFilter)
+      .map((status) => status.id)
+  }
+
+  if (pendingStatusIds.length === 0) {
+    return { data: [], hasNextPage: false, nextCursor: null, limit }
+  }
 
   // L1: actor is the level-1 approver for these employees (SBH for SRO/BOA/ABH)
   // L2: actor is the level-3 approver (Mansoor's UUID is stored in approval_employee_id_level_3)

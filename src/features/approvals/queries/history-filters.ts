@@ -81,6 +81,7 @@ export async function getFilteredApprovalHistoryPaginated(
     p_name_search: filters.employeeName,
     p_actor_filters:
       filters.actorFilter === 'all' ? ['all'] : [filters.actorFilter],
+    p_claim_status: filters.claimStatus?.trim().toUpperCase() ?? null,
     p_claim_date: filters.claimDate,
     p_hod_approved_from: toIstDayStart(filters.hodApprovedFrom),
     p_hod_approved_to: toIstDayEnd(filters.hodApprovedTo),

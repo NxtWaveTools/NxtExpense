@@ -63,7 +63,7 @@ export async function AppHeader() {
                 {employee.employee_name}
               </p>
               <p className="text-xs text-foreground/55 leading-tight">
-                {employee.designation}
+                {employee.designations?.designation_name ?? ''}
               </p>
             </Link>
           </div>

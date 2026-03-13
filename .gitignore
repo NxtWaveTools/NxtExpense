@@ -54,3 +54,5 @@ database-migration-plan.md
 hardcoded-audit-report.md
 refactoring-checklist.md
 proposed-schema.sql
+playwright-report/
+test-results/

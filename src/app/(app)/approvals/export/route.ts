@@ -34,6 +34,7 @@ async function handleExportRequest(request: Request) {
       searchParams.get('claimDateTo')
 
     const filters = normalizeApprovalHistoryFilters({
+      claimStatus: searchParams.get('claimStatus') ?? undefined,
       employeeName: searchParams.get('employeeName') ?? undefined,
       actorFilter: searchParams.get('actorFilter') ?? undefined,
       claimDate: claimDate ?? undefined,

@@ -11,6 +11,7 @@ describe('normalizeApprovalHistoryFilters', () => {
     const result = normalizeApprovalHistoryFilters({})
     expect(result.employeeName).toBeNull()
     expect(result.actorFilter).toBe('all')
+    expect(result.claimStatus).toBeNull()
     expect(result.claimDate).toBeNull()
     expect(result.hodApprovedFrom).toBeNull()
     expect(result.hodApprovedTo).toBeNull()
@@ -28,6 +29,7 @@ describe('normalizeApprovalHistoryFilters', () => {
   it('normalizes empty strings to null', () => {
     const result = normalizeApprovalHistoryFilters({
       employeeName: '',
+      claimStatus: '',
       claimDate: '',
       hodApprovedFrom: '',
       hodApprovedTo: '',
@@ -35,6 +37,7 @@ describe('normalizeApprovalHistoryFilters', () => {
       financeApprovedTo: '',
     })
     expect(result.employeeName).toBeNull()
+    expect(result.claimStatus).toBeNull()
     expect(result.claimDate).toBeNull()
     expect(result.hodApprovedFrom).toBeNull()
     expect(result.hodApprovedTo).toBeNull()
@@ -98,6 +101,7 @@ describe('normalizeApprovalHistoryFilters', () => {
     const result = normalizeApprovalHistoryFilters({
       employeeName: 'Yohan',
       actorFilter: 'sbh',
+      claimStatus: 'L1_PENDING',
       claimDate: '2026-03-01',
       hodApprovedFrom: '2026-03-02',
       hodApprovedTo: '2026-03-06',
@@ -106,6 +110,7 @@ describe('normalizeApprovalHistoryFilters', () => {
     })
     expect(result.employeeName).toBe('Yohan')
     expect(result.actorFilter).toBe('sbh')
+    expect(result.claimStatus).toBe('L1_PENDING')
     expect(result.claimDate).toBe('2026-03-01')
     expect(result.hodApprovedFrom).toBe('2026-03-02')
     expect(result.hodApprovedTo).toBe('2026-03-06')

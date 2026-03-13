@@ -1,15 +1,18 @@
 import Link from 'next/link'
 
+import type { ClaimStatusCatalogItem } from '@/features/claims/types'
 import type { ApprovalHistoryFilters } from '@/features/approvals/types'
 
 type ApprovalFiltersBarProps = {
   filters: ApprovalHistoryFilters
+  statusCatalog: ClaimStatusCatalogItem[]
   exportCurrentPageHref: string
   exportAllHref: string
 }
 
 export function ApprovalFiltersBar({
   filters,
+  statusCatalog,
   exportCurrentPageHref,
   exportAllHref,
 }: ApprovalFiltersBarProps) {
@@ -22,6 +25,22 @@ export function ApprovalFiltersBar({
         method="get"
         className="mt-4 grid gap-3 md:grid-cols-4"
       >
+        <label className="space-y-1 text-sm">
+          <span className="text-foreground/80">Status</span>
+          <select
+            name="claimStatus"
+            defaultValue={filters.claimStatus ?? ''}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+          >
+            <option value="">All Statuses</option>
+            {statusCatalog.map((status) => (
+              <option key={status.status} value={status.status}>
+                {status.display_label}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="space-y-1 text-sm">
           <span className="text-foreground/80">Employee Name</span>
           <input
