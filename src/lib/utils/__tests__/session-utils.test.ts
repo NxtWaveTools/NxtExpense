@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
+import { NextResponse } from 'next/server'
 
-import { sanitizeRedirectPath } from '../session-utils'
+import { copyResponseCookies, sanitizeRedirectPath } from '../session-utils'
+
+describe('copyResponseCookies', () => {
+  it('copies all cookies from source to destination response', () => {
+    const source = NextResponse.next()
+    source.cookies.set('session', 'abc123')
+    source.cookies.set('refresh', 'refresh-token')
+
+    const destination = NextResponse.next()
+    const result = copyResponseCookies(source, destination)
+
+    expect(result.cookies.get('session')?.value).toBe('abc123')
+    expect(result.cookies.get('refresh')?.value).toBe('refresh-token')
+  })
+})
 
 describe('sanitizeRedirectPath', () => {
   describe('safe paths — allowed through', () => {

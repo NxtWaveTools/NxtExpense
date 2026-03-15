@@ -1,0 +1,491 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({
+  createSupabaseServerClient: vi.fn(),
+  getEmployeeByEmail: vi.fn(),
+  getEmployeeRoles: vi.fn(),
+  canAccessEmployeeClaimsFromRoles: vi.fn(),
+  getAllWorkLocations: vi.fn(),
+  getClaimStatusByCode: vi.fn(),
+  getDesignationApprovalFlow: vi.fn(),
+  calculateBaseLocationItems: vi.fn(),
+  calculateOutstationOwnVehicleItems: vi.fn(),
+  calculateOutstationTaxiItems: vi.fn(),
+  getVehicleTypeById: vi.fn(),
+  countFoodWithPrincipalsInMonth: vi.fn(),
+  getFoodWithPrincipalsLimit: vi.fn(),
+  getClaimForDate: vi.fn(),
+  insertClaim: vi.fn(),
+  insertClaimItems: vi.fn(),
+  getMyClaimsPaginated: vi.fn(),
+}))
+
+vi.mock('@/lib/supabase/server', () => ({
+  createSupabaseServerClient: mocks.createSupabaseServerClient,
+}))
+
+vi.mock('@/lib/services/employee-service', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/lib/services/employee-service')
+  >('@/lib/services/employee-service')
+
+  return {
+    ...actual,
+    getEmployeeByEmail: mocks.getEmployeeByEmail,
+    getEmployeeRoles: mocks.getEmployeeRoles,
+  }
+})
+
+vi.mock('@/lib/services/approval-service', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/lib/services/approval-service')
+  >('@/lib/services/approval-service')
+
+  return {
+    ...actual,
+    canAccessEmployeeClaimsFromRoles: mocks.canAccessEmployeeClaimsFromRoles,
+  }
+})
+
+vi.mock('@/lib/services/config-service', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/lib/services/config-service')
+  >('@/lib/services/config-service')
+
+  return {
+    ...actual,
+    getAllWorkLocations: mocks.getAllWorkLocations,
+    getClaimStatusByCode: mocks.getClaimStatusByCode,
+    getDesignationApprovalFlow: mocks.getDesignationApprovalFlow,
+  }
+})
+
+vi.mock('@/lib/services/calculation-service', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/lib/services/calculation-service')
+  >('@/lib/services/calculation-service')
+
+  return {
+    ...actual,
+    calculateBaseLocationItems: mocks.calculateBaseLocationItems,
+    calculateOutstationOwnVehicleItems:
+      mocks.calculateOutstationOwnVehicleItems,
+    calculateOutstationTaxiItems: mocks.calculateOutstationTaxiItems,
+    getVehicleTypeById: mocks.getVehicleTypeById,
+    countFoodWithPrincipalsInMonth: mocks.countFoodWithPrincipalsInMonth,
+    getFoodWithPrincipalsLimit: mocks.getFoodWithPrincipalsLimit,
+  }
+})
+
+vi.mock('@/features/claims/mutations', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/claims/mutations')
+  >('@/features/claims/mutations')
+
+  return {
+    ...actual,
+    getClaimForDate: mocks.getClaimForDate,
+    insertClaim: mocks.insertClaim,
+    insertClaimItems: mocks.insertClaimItems,
+  }
+})
+
+vi.mock('@/features/claims/queries', () => ({
+  getMyClaimsPaginated: mocks.getMyClaimsPaginated,
+}))
+
+import { submitClaimAction } from '@/features/claims/actions'
+
+const BASE_LOCATION_INPUT = {
+  claimDate: '06/03/2026',
+  workLocation: 'wl-base',
+  vehicleType: 'veh-2w',
+}
+
+const OUTSTATION_OWN_INPUT = {
+  claimDate: '06/03/2026',
+  workLocation: 'wl-outstation',
+  ownVehicleUsed: true,
+  vehicleType: 'veh-2w',
+  outstationCityId: 'city-out',
+  fromCityId: 'city-a',
+  toCityId: 'city-b',
+  kmTravelled: 100,
+  accommodationNights: 1,
+  foodWithPrincipalsAmount: 0,
+}
+
+const OUTSTATION_TAXI_INPUT = {
+  claimDate: '06/03/2026',
+  workLocation: 'wl-outstation',
+  ownVehicleUsed: false,
+  outstationCityId: 'city-out',
+  transportType: 'Taxi',
+  taxiAmount: 350,
+  accommodationNights: 0,
+  foodWithPrincipalsAmount: 0,
+}
+
+describe('submitClaimAction branch coverage', () => {
+  let rpcMock: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    rpcMock = vi.fn().mockResolvedValue({ error: null })
+
+    mocks.createSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: { email: 'employee@nxtwave.co.in' },
+          },
+        }),
+      },
+      rpc: rpcMock,
+    })
+
+    mocks.getEmployeeByEmail.mockResolvedValue({
+      id: 'emp-1',
+      designation_id: 'desg-1',
+    })
+
+    mocks.getEmployeeRoles.mockResolvedValue([{ role_code: 'EMPLOYEE' }])
+    mocks.canAccessEmployeeClaimsFromRoles.mockReturnValue(true)
+    mocks.getClaimForDate.mockResolvedValue(null)
+
+    mocks.getAllWorkLocations.mockResolvedValue([
+      {
+        id: 'wl-base',
+        requires_vehicle_selection: true,
+        requires_outstation_details: false,
+      },
+      {
+        id: 'wl-outstation',
+        requires_vehicle_selection: false,
+        requires_outstation_details: true,
+      },
+      {
+        id: 'wl-office',
+        requires_vehicle_selection: false,
+        requires_outstation_details: false,
+      },
+    ])
+
+    mocks.getDesignationApprovalFlow.mockResolvedValue({
+      required_approval_levels: [1],
+    })
+
+    mocks.getClaimStatusByCode.mockResolvedValue({ id: 'status-l1' })
+    mocks.getVehicleTypeById.mockResolvedValue({
+      vehicle_name: 'Two Wheeler',
+      max_km_round_trip: 150,
+    })
+
+    mocks.calculateBaseLocationItems.mockResolvedValue({
+      items: [{ expense_type: 'FUEL', amount: 180, description: 'Fuel' }],
+      total: 180,
+    })
+
+    mocks.calculateOutstationOwnVehicleItems.mockResolvedValue({
+      items: [
+        { expense_type: 'FUEL', amount: 500, description: 'Intercity fuel' },
+      ],
+      total: 500,
+    })
+
+    mocks.calculateOutstationTaxiItems.mockResolvedValue({
+      items: [{ expense_type: 'TAXI', amount: 350, description: 'Taxi fare' }],
+      total: 350,
+    })
+
+    mocks.getFoodWithPrincipalsLimit.mockResolvedValue(100)
+    mocks.countFoodWithPrincipalsInMonth.mockResolvedValue(0)
+
+    mocks.insertClaim.mockResolvedValue({
+      id: 'claim-new-1',
+      claim_number: 'CLAIM-20260306-001',
+    })
+    mocks.insertClaimItems.mockResolvedValue(undefined)
+  })
+
+  it('should reject unknown work locations', async () => {
+    const result = await submitClaimAction({
+      claimDate: '06/03/2026',
+      workLocation: 'wl-missing',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('Unknown work location.')
+  })
+
+  it('should require vehicle type for base location claims', async () => {
+    const result = await submitClaimAction({
+      claimDate: '06/03/2026',
+      workLocation: 'wl-base',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe(
+      'Vehicle type is required for this work location.'
+    )
+  })
+
+  it.each([
+    {
+      name: 'requires outstation city',
+      input: { ...OUTSTATION_OWN_INPUT, outstationCityId: undefined },
+      expected: 'Outstation city is required.',
+    },
+    {
+      name: 'requires own-vehicle type',
+      input: { ...OUTSTATION_OWN_INPUT, vehicleType: undefined },
+      expected: 'Vehicle type is required when using own vehicle.',
+    },
+    {
+      name: 'requires from city for own vehicle',
+      input: { ...OUTSTATION_OWN_INPUT, fromCityId: undefined },
+      expected: 'From city is required for own vehicle travel.',
+    },
+    {
+      name: 'requires to city for own vehicle',
+      input: { ...OUTSTATION_OWN_INPUT, toCityId: undefined },
+      expected: 'To city is required for own vehicle travel.',
+    },
+    {
+      name: 'requires positive km for own vehicle',
+      input: { ...OUTSTATION_OWN_INPUT, kmTravelled: 0 },
+      expected: 'KM travelled must be greater than zero.',
+    },
+  ])('should enforce outstation fields: $name', async ({ input, expected }) => {
+    const result = await submitClaimAction(input as never)
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe(expected)
+  })
+
+  it('should require transport type when own vehicle is not used', async () => {
+    const result = await submitClaimAction({
+      ...OUTSTATION_TAXI_INPUT,
+      transportType: '   ',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe(
+      'Transport type is required when not using own vehicle.'
+    )
+  })
+
+  it('should block own-vehicle outstation claims above km limit', async () => {
+    const result = await submitClaimAction({
+      ...OUTSTATION_OWN_INPUT,
+      kmTravelled: 220,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('exceeds max limit')
+    expect(mocks.calculateOutstationOwnVehicleItems).not.toHaveBeenCalled()
+  })
+
+  it('should enforce food with principals eligibility and monthly cap', async () => {
+    mocks.getFoodWithPrincipalsLimit.mockResolvedValueOnce(0)
+    const ineligibleResult = await submitClaimAction({
+      ...OUTSTATION_OWN_INPUT,
+      foodWithPrincipalsAmount: 500,
+    })
+
+    expect(ineligibleResult.ok).toBe(false)
+    expect(ineligibleResult.error).toBe(
+      'Your designation is not eligible for Food with Principals.'
+    )
+
+    mocks.getFoodWithPrincipalsLimit.mockResolvedValueOnce(500)
+    mocks.countFoodWithPrincipalsInMonth.mockResolvedValueOnce(5)
+
+    const limitResult = await submitClaimAction({
+      ...OUTSTATION_OWN_INPUT,
+      foodWithPrincipalsAmount: 500,
+    })
+
+    expect(limitResult.ok).toBe(false)
+    expect(limitResult.error).toContain('maximum 5 times per month')
+  })
+
+  it('should surface workflow bootstrap errors from approval-flow configuration', async () => {
+    mocks.getEmployeeByEmail.mockResolvedValueOnce({
+      id: 'emp-1',
+      designation_id: null,
+    })
+
+    const missingDesignation = await submitClaimAction(BASE_LOCATION_INPUT)
+    expect(missingDesignation.ok).toBe(false)
+    expect(missingDesignation.error).toBe(
+      'Employee designation is required to submit claims.'
+    )
+
+    mocks.getDesignationApprovalFlow.mockResolvedValueOnce({
+      required_approval_levels: [99],
+    })
+
+    const unsupportedLevel = await submitClaimAction(BASE_LOCATION_INPUT)
+    expect(unsupportedLevel.ok).toBe(false)
+    expect(unsupportedLevel.error).toContain('Unsupported first approval level')
+  })
+
+  it('should return default workflow start message on non-Error failures', async () => {
+    mocks.getDesignationApprovalFlow.mockRejectedValueOnce('db-offline')
+
+    const result = await submitClaimAction(BASE_LOCATION_INPUT)
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('Unable to start workflow.')
+  })
+
+  it('should map expense items for standard submissions and taxi submissions', async () => {
+    const standardResult = await submitClaimAction(BASE_LOCATION_INPUT)
+    expect(standardResult.ok).toBe(true)
+
+    expect(mocks.insertClaimItems).toHaveBeenCalledWith(expect.anything(), [
+      {
+        claimId: 'claim-new-1',
+        itemType: 'FUEL',
+        amount: 180,
+        description: 'Fuel',
+      },
+    ])
+
+    await submitClaimAction(OUTSTATION_TAXI_INPUT)
+
+    expect(mocks.calculateOutstationTaxiItems).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ transportTypeName: 'Taxi' })
+    )
+    expect(mocks.insertClaim).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        ownVehicleUsed: false,
+        vehicleTypeId: null,
+        fromCityId: null,
+        toCityId: null,
+        kmTravelled: null,
+      })
+    )
+  })
+
+  it('should keep defensive vehicleType guard for inconsistent config flags', async () => {
+    let readCount = 0
+
+    mocks.getAllWorkLocations.mockResolvedValueOnce([
+      {
+        id: 'wl-inconsistent',
+        get requires_vehicle_selection() {
+          readCount += 1
+          return readCount > 1
+        },
+        requires_outstation_details: false,
+      },
+    ])
+
+    const result = await submitClaimAction({
+      claimDate: '06/03/2026',
+      workLocation: 'wl-inconsistent',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe(
+      'Vehicle type is required for this work location.'
+    )
+  })
+
+  it('should map expense items for resubmitted replacement claims', async () => {
+    mocks.getClaimForDate.mockResolvedValueOnce({
+      id: 'claim-old-rejected',
+      claim_number: 'CLAIM-20260306-0001',
+      status_code: 'REJECTED',
+      current_approval_level: null,
+      is_rejection: true,
+      is_terminal: true,
+      allow_resubmit: true,
+      is_superseded: false,
+    })
+
+    mocks.insertClaim.mockResolvedValueOnce({
+      id: 'claim-refile-1',
+      claim_number: 'CLAIM-20260306-0002',
+    })
+
+    const result = await submitClaimAction(BASE_LOCATION_INPUT)
+
+    expect(result.ok).toBe(true)
+    expect(rpcMock).toHaveBeenCalledWith('supersede_rejected_claim', {
+      p_claim_id: 'claim-old-rejected',
+    })
+    expect(mocks.insertClaimItems).toHaveBeenCalledWith(expect.anything(), [
+      {
+        claimId: 'claim-refile-1',
+        itemType: 'FUEL',
+        amount: 180,
+        description: 'Fuel',
+      },
+    ])
+  })
+
+  it('should persist own-vehicle outstation fields for standard submissions', async () => {
+    const result = await submitClaimAction({
+      ...OUTSTATION_OWN_INPUT,
+      foodWithPrincipalsAmount: 0,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(mocks.insertClaim).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        ownVehicleUsed: true,
+        vehicleTypeId: 'veh-2w',
+        outstationCityId: 'city-out',
+        fromCityId: 'city-a',
+        toCityId: 'city-b',
+        kmTravelled: 100,
+        accommodationNights: 1,
+        foodWithPrincipalsAmount: 0,
+      })
+    )
+  })
+
+  it('should persist own-vehicle outstation fields for replacement submissions', async () => {
+    mocks.getClaimForDate.mockResolvedValueOnce({
+      id: 'claim-old-rejected-own',
+      claim_number: 'CLAIM-20260306-0003',
+      status_code: 'REJECTED',
+      current_approval_level: null,
+      is_rejection: true,
+      is_terminal: true,
+      allow_resubmit: true,
+      is_superseded: false,
+    })
+
+    mocks.insertClaim.mockResolvedValueOnce({
+      id: 'claim-refile-own-1',
+      claim_number: 'CLAIM-20260306-0004',
+    })
+
+    const result = await submitClaimAction({
+      ...OUTSTATION_OWN_INPUT,
+      foodWithPrincipalsAmount: 0,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(mocks.insertClaim).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        ownVehicleUsed: true,
+        vehicleTypeId: 'veh-2w',
+        outstationCityId: 'city-out',
+        fromCityId: 'city-a',
+        toCityId: 'city-b',
+        kmTravelled: 100,
+        accommodationNights: 1,
+        foodWithPrincipalsAmount: 0,
+      })
+    )
+  })
+})

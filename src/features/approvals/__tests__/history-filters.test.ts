@@ -70,6 +70,21 @@ describe('approval history filter utilities', () => {
     expect(params.get('financeApprovedTo')).toBe('2026-03-08')
   })
 
+  it('omits query params when filters are at default values', () => {
+    const params = addApprovalFiltersToParams(new URLSearchParams(), {
+      employeeName: null,
+      actorFilter: 'all',
+      claimStatus: null,
+      claimDate: null,
+      hodApprovedFrom: null,
+      hodApprovedTo: null,
+      financeApprovedFrom: null,
+      financeApprovedTo: null,
+    })
+
+    expect(params.toString()).toBe('')
+  })
+
   it('builds CSV output with formatted dates and quoted values', () => {
     const csv = buildApprovalHistoryCsv([
       {

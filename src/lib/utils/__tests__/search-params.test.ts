@@ -10,6 +10,7 @@ import {
 describe('search params utilities', () => {
   it('picks first value from repeated query entries', () => {
     expect(getFirstSearchParamValue(['first', 'second'])).toBe('first')
+    expect(getFirstSearchParamValue([])).toBeNull()
     expect(getFirstSearchParamValue('value')).toBe('value')
     expect(getFirstSearchParamValue(undefined)).toBeNull()
   })
@@ -19,11 +20,13 @@ describe('search params utilities', () => {
       employeeName: '',
       actorFilter: 'all',
       claimDateFrom: '2026-03-01',
+      actorBucket: ['finance', 'sbh'],
     })
 
     expect(params.get('employeeName')).toBeNull()
     expect(params.get('actorFilter')).toBe('all')
     expect(params.get('claimDateFrom')).toBe('2026-03-01')
+    expect(params.get('actorBucket')).toBe('finance')
   })
 
   it('creates deterministic query ordering for canonical redirects', () => {
