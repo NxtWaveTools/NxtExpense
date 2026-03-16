@@ -107,7 +107,7 @@ const OUTSTATION_OWN_INPUT = {
   workLocation: 'wl-outstation',
   ownVehicleUsed: true,
   vehicleType: 'veh-2w',
-  outstationCityId: 'city-out',
+  outstationStateId: 'state-tg',
   fromCityId: 'city-a',
   toCityId: 'city-b',
   kmTravelled: 100,
@@ -119,7 +119,9 @@ const OUTSTATION_TAXI_INPUT = {
   claimDate: '06/03/2026',
   workLocation: 'wl-outstation',
   ownVehicleUsed: false,
-  outstationCityId: 'city-out',
+  outstationStateId: 'state-tg',
+  fromCityId: 'city-a',
+  toCityId: 'city-b',
   transportType: 'Taxi',
   taxiAmount: 350,
   accommodationNights: 0,
@@ -134,6 +136,17 @@ describe('submitClaimAction branch coverage', () => {
 
     rpcMock = vi.fn().mockResolvedValue({ error: null })
 
+    const citiesQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockImplementation((_column: string, ids: string[]) =>
+        Promise.resolve({
+          data: ids.map((id) => ({ id })),
+          error: null,
+        })
+      ),
+    }
+
     mocks.createSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
@@ -143,6 +156,12 @@ describe('submitClaimAction branch coverage', () => {
         }),
       },
       rpc: rpcMock,
+      from: vi.fn((table: string) => {
+        if (table !== 'cities') {
+          throw new Error(`Unexpected table query in test: ${table}`)
+        }
+        return citiesQuery
+      }),
     })
 
     mocks.getEmployeeByEmail.mockResolvedValue({
@@ -233,24 +252,24 @@ describe('submitClaimAction branch coverage', () => {
 
   it.each([
     {
-      name: 'requires outstation city',
-      input: { ...OUTSTATION_OWN_INPUT, outstationCityId: undefined },
-      expected: 'Outstation city is required.',
+      name: 'requires outstation state',
+      input: { ...OUTSTATION_OWN_INPUT, outstationStateId: undefined },
+      expected: 'State is required.',
+    },
+    {
+      name: 'requires from city for outstation travel',
+      input: { ...OUTSTATION_OWN_INPUT, fromCityId: undefined },
+      expected: 'From city is required for outstation travel.',
+    },
+    {
+      name: 'requires to city for outstation travel',
+      input: { ...OUTSTATION_OWN_INPUT, toCityId: undefined },
+      expected: 'To city is required for outstation travel.',
     },
     {
       name: 'requires own-vehicle type',
       input: { ...OUTSTATION_OWN_INPUT, vehicleType: undefined },
       expected: 'Vehicle type is required when using own vehicle.',
-    },
-    {
-      name: 'requires from city for own vehicle',
-      input: { ...OUTSTATION_OWN_INPUT, fromCityId: undefined },
-      expected: 'From city is required for own vehicle travel.',
-    },
-    {
-      name: 'requires to city for own vehicle',
-      input: { ...OUTSTATION_OWN_INPUT, toCityId: undefined },
-      expected: 'To city is required for own vehicle travel.',
     },
     {
       name: 'requires positive km for own vehicle',
@@ -365,8 +384,10 @@ describe('submitClaimAction branch coverage', () => {
       expect.objectContaining({
         ownVehicleUsed: false,
         vehicleTypeId: null,
-        fromCityId: null,
-        toCityId: null,
+        outstationStateId: 'state-tg',
+        outstationCityId: 'city-b',
+        fromCityId: 'city-a',
+        toCityId: 'city-b',
         kmTravelled: null,
       })
     )
@@ -442,7 +463,8 @@ describe('submitClaimAction branch coverage', () => {
       expect.objectContaining({
         ownVehicleUsed: true,
         vehicleTypeId: 'veh-2w',
-        outstationCityId: 'city-out',
+        outstationStateId: 'state-tg',
+        outstationCityId: 'city-b',
         fromCityId: 'city-a',
         toCityId: 'city-b',
         kmTravelled: 100,
@@ -480,7 +502,8 @@ describe('submitClaimAction branch coverage', () => {
       expect.objectContaining({
         ownVehicleUsed: true,
         vehicleTypeId: 'veh-2w',
-        outstationCityId: 'city-out',
+        outstationStateId: 'state-tg',
+        outstationCityId: 'city-b',
         fromCityId: 'city-a',
         toCityId: 'city-b',
         kmTravelled: 100,

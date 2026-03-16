@@ -8,6 +8,7 @@ type ClaimPayload = {
   workLocationId: string | null
   ownVehicleUsed: boolean | null
   vehicleTypeId: string | null
+  outstationStateId: string | null
   outstationCityId: string | null
   fromCityId: string | null
   toCityId: string | null
@@ -40,6 +41,7 @@ export async function insertClaim(
       work_location_id: input.workLocationId,
       own_vehicle_used: input.ownVehicleUsed,
       vehicle_type_id: input.vehicleTypeId,
+      outstation_state_id: input.outstationStateId,
       outstation_city_id: input.outstationCityId,
       from_city_id: input.fromCityId,
       to_city_id: input.toCityId,
@@ -74,6 +76,7 @@ export async function updateClaimDraftData(
       work_location_id: input.workLocationId,
       own_vehicle_used: input.ownVehicleUsed,
       vehicle_type_id: input.vehicleTypeId,
+      outstation_state_id: input.outstationStateId,
       outstation_city_id: input.outstationCityId,
       from_city_id: input.fromCityId,
       to_city_id: input.toCityId,

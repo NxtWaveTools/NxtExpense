@@ -52,6 +52,7 @@ export const claimSubmissionSchema = z.object({
   ownVehicleUsed: z.boolean().optional(),
   vehicleType: optionalNonEmptyStringField(),
   transportType: optionalNonEmptyStringField(),
+  outstationStateId: optionalNonEmptyStringField(),
   outstationCityId: optionalNonEmptyStringField(),
   fromCityId: optionalNonEmptyStringField(),
   toCityId: optionalNonEmptyStringField(),

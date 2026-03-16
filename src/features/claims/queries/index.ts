@@ -17,7 +17,7 @@ import {
 } from '@/lib/utils/claim-status'
 
 export const CLAIM_COLUMNS =
-  'id, claim_number, employee_id, claim_date, work_location_id, work_locations(location_name), own_vehicle_used, vehicle_type_id, vehicle_types(vehicle_name), outstation_city_id, from_city_id, to_city_id, outstation_city:cities!outstation_city_id(city_name), from_city_data:cities!from_city_id(city_name), to_city_data:cities!to_city_id(city_name), km_travelled, total_amount, status_id, allow_resubmit, is_superseded, claim_statuses!status_id(status_code, status_name, display_color, is_terminal, is_rejection), current_approval_level, submitted_at, created_at, updated_at, resubmission_count, last_rejection_notes, last_rejected_at, accommodation_nights, food_with_principals_amount'
+  'id, claim_number, employee_id, claim_date, work_location_id, work_locations(location_name), own_vehicle_used, vehicle_type_id, vehicle_types(vehicle_name), outstation_state_id, outstation_city_id, from_city_id, to_city_id, outstation_state:states!outstation_state_id(state_name), outstation_city:cities!outstation_city_id(city_name), from_city_data:cities!from_city_id(city_name), to_city_data:cities!to_city_id(city_name), km_travelled, total_amount, status_id, allow_resubmit, is_superseded, claim_statuses!status_id(status_code, status_name, display_color, is_terminal, is_rejection), current_approval_level, submitted_at, created_at, updated_at, resubmission_count, last_rejection_notes, last_rejected_at, accommodation_nights, food_with_principals_amount'
 
 // Maps raw Supabase FK join row to flat Claim type
 export function mapClaimRow(raw: Record<string, unknown>): Claim {
@@ -29,6 +29,9 @@ export function mapClaimRow(raw: Record<string, unknown>): Claim {
   const outstationCity = Array.isArray(r.outstation_city)
     ? r.outstation_city[0]
     : r.outstation_city
+  const outstationState = Array.isArray(r.outstation_state)
+    ? r.outstation_state[0]
+    : r.outstation_state
   const fromCityObj = Array.isArray(r.from_city_data)
     ? r.from_city_data[0]
     : r.from_city_data
@@ -41,6 +44,7 @@ export function mapClaimRow(raw: Record<string, unknown>): Claim {
     statusDisplayColor: statusInfo?.display_color ?? 'neutral',
     is_terminal: statusInfo?.is_terminal ?? false,
     is_rejection: statusInfo?.is_rejection ?? false,
+    outstation_state_name: outstationState?.state_name ?? null,
     work_location: r.work_locations?.location_name ?? '',
     vehicle_type: r.vehicle_types?.vehicle_name ?? null,
     outstation_city_name: outstationCity?.city_name ?? null,

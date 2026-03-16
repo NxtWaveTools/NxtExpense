@@ -82,6 +82,35 @@ async function resolveInitialWorkflowState(
   }
 }
 
+async function validateCitiesForSelectedState(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  stateId: string,
+  cityIds: Array<string | undefined>
+): Promise<string | null> {
+  const uniqueCityIds = [...new Set(cityIds.filter(Boolean))] as string[]
+
+  if (uniqueCityIds.length === 0) {
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('cities')
+    .select('id')
+    .eq('state_id', stateId)
+    .in('id', uniqueCityIds)
+
+  if (error) {
+    return 'Unable to validate selected cities for the chosen state.'
+  }
+
+  const validIds = new Set((data ?? []).map((row) => row.id as string))
+  const hasInvalidCity = uniqueCityIds.some((cityId) => !validIds.has(cityId))
+
+  return hasInvalidCity
+    ? 'Selected cities must belong to the selected state.'
+    : null
+}
+
 export async function submitClaimAction(
   rawInput: ClaimFormValues
 ): Promise<ClaimActionResult> {
@@ -145,8 +174,17 @@ export async function submitClaimAction(
   }
 
   if (wlFlags.requires_outstation_details) {
-    if (!input.outstationCityId) {
-      return { ok: false, error: 'Outstation city is required.' }
+    if (!input.outstationStateId) {
+      return { ok: false, error: 'State is required.' }
+    }
+    if (!input.fromCityId) {
+      return {
+        ok: false,
+        error: 'From city is required for outstation travel.',
+      }
+    }
+    if (!input.toCityId) {
+      return { ok: false, error: 'To city is required for outstation travel.' }
     }
     if (input.ownVehicleUsed) {
       if (!input.vehicleType) {
@@ -155,24 +193,22 @@ export async function submitClaimAction(
           error: 'Vehicle type is required when using own vehicle.',
         }
       }
-      if (!input.fromCityId) {
-        return {
-          ok: false,
-          error: 'From city is required for own vehicle travel.',
-        }
-      }
-      if (!input.toCityId) {
-        return {
-          ok: false,
-          error: 'To city is required for own vehicle travel.',
-        }
-      }
       if (!input.kmTravelled || input.kmTravelled <= 0) {
         return { ok: false, error: 'KM travelled must be greater than zero.' }
       }
     } else {
       // Transport selection is intentionally hidden in the current UI phase.
       // For no-own-vehicle outstation claims, transport type defaults server-side.
+    }
+
+    const cityValidationError = await validateCitiesForSelectedState(
+      supabase,
+      input.outstationStateId,
+      [input.fromCityId, input.toCityId]
+    )
+
+    if (cityValidationError) {
+      return { ok: false, error: cityValidationError }
     }
   }
 
@@ -297,7 +333,7 @@ export async function submitClaimAction(
   // Extract variant-specific fields based on DB flags
   type OutstationInput = {
     ownVehicleUsed: boolean
-    outstationCityId: string
+    outstationStateId: string
     fromCityId?: string
     toCityId?: string
     kmTravelled?: number
@@ -306,6 +342,9 @@ export async function submitClaimAction(
   }
   const outstation = isOutstation ? (input as unknown as OutstationInput) : null
   const hasOwnVehicle = isOutstation && outstation?.ownVehicleUsed === true
+  const derivedOutstationCityId = isOutstation
+    ? (outstation?.toCityId ?? null)
+    : null
 
   // ── Re-file when a rejected claim has been granted allow_resubmit=true ──
   // The old rejected row is preserved (frozen as is_superseded=TRUE) so it
@@ -340,9 +379,10 @@ export async function submitClaimAction(
       workLocationId,
       ownVehicleUsed: outstation?.ownVehicleUsed ?? null,
       vehicleTypeId: isBaseLocation || hasOwnVehicle ? vehicleTypeId : null,
-      outstationCityId: outstation?.outstationCityId ?? null,
-      fromCityId: hasOwnVehicle ? (outstation?.fromCityId ?? null) : null,
-      toCityId: hasOwnVehicle ? (outstation?.toCityId ?? null) : null,
+      outstationStateId: outstation?.outstationStateId ?? null,
+      outstationCityId: derivedOutstationCityId,
+      fromCityId: isOutstation ? (outstation?.fromCityId ?? null) : null,
+      toCityId: isOutstation ? (outstation?.toCityId ?? null) : null,
       kmTravelled: hasOwnVehicle ? (outstation?.kmTravelled ?? null) : null,
       totalAmount: draft.total,
       statusId: initialWorkflowState.statusId,
@@ -379,9 +419,10 @@ export async function submitClaimAction(
     workLocationId,
     ownVehicleUsed: outstation?.ownVehicleUsed ?? null,
     vehicleTypeId: isBaseLocation || hasOwnVehicle ? vehicleTypeId : null,
-    outstationCityId: outstation?.outstationCityId ?? null,
-    fromCityId: hasOwnVehicle ? (outstation?.fromCityId ?? null) : null,
-    toCityId: hasOwnVehicle ? (outstation?.toCityId ?? null) : null,
+    outstationStateId: outstation?.outstationStateId ?? null,
+    outstationCityId: derivedOutstationCityId,
+    fromCityId: isOutstation ? (outstation?.fromCityId ?? null) : null,
+    toCityId: isOutstation ? (outstation?.toCityId ?? null) : null,
     kmTravelled: hasOwnVehicle ? (outstation?.kmTravelled ?? null) : null,
     totalAmount: draft.total,
     statusId: initialWorkflowState.statusId,

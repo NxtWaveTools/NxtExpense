@@ -16,6 +16,7 @@ import {
 } from '@/features/claims/components/claim-summary-preview'
 import { formatDate } from '@/lib/utils/date'
 import type {
+  CityOption,
   ClaimFormInitialValues,
   ClaimFormValues,
   SelectOption,
@@ -27,7 +28,8 @@ import type {
 type ClaimSubmissionFormProps = {
   allowedVehicleTypes: readonly SelectOption[]
   workLocationOptions: readonly WorkLocationOption[]
-  cityOptions: readonly SelectOption[]
+  stateOptions: readonly SelectOption[]
+  cityOptions: readonly CityOption[]
   claimRateSnapshot: ClaimRateSnapshot
   initialValues?: ClaimFormInitialValues | null
 }
@@ -35,6 +37,7 @@ type ClaimSubmissionFormProps = {
 export function ClaimSubmissionForm({
   allowedVehicleTypes,
   workLocationOptions,
+  stateOptions,
   cityOptions,
   claimRateSnapshot,
   initialValues,
@@ -59,8 +62,8 @@ export function ClaimSubmissionForm({
   const [ownVehicleUsed, setOwnVehicleUsed] = useState(
     initialValues?.ownVehicleUsed ?? true
   )
-  const [outstationCityId, setOutstationCityId] = useState(
-    initialValues?.outstationCityId ?? ''
+  const [outstationStateId, setOutstationStateId] = useState(
+    initialValues?.outstationStateId ?? ''
   )
   const [fromCityId, setFromCityId] = useState(initialValues?.fromCityId ?? '')
   const [toCityId, setToCityId] = useState(initialValues?.toCityId ?? '')
@@ -78,6 +81,14 @@ export function ClaimSubmissionForm({
     () => workLocationOptions.find((wl) => wl.id === workLocation) ?? null,
     [workLocation, workLocationOptions]
   )
+
+  const filteredCityOptions = useMemo(() => {
+    if (!outstationStateId) {
+      return []
+    }
+
+    return cityOptions.filter((city) => city.stateId === outstationStateId)
+  }, [cityOptions, outstationStateId])
 
   const kmValidationMessage = useMemo(() => {
     const kmValue = Number.parseFloat(kmTravelled)
@@ -137,6 +148,12 @@ export function ClaimSubmissionForm({
     }
   }
 
+  function handleOutstationStateChange(value: string) {
+    setOutstationStateId(value)
+    setFromCityId('')
+    setToCityId('')
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -171,11 +188,13 @@ export function ClaimSubmissionForm({
         requiresVehicleSelection || isOutstationOwnVehicle
           ? vehicleType || undefined
           : undefined,
-      outstationCityId: requiresOutstationDetails
-        ? outstationCityId || undefined
+      outstationStateId: requiresOutstationDetails
+        ? outstationStateId || undefined
         : undefined,
-      fromCityId: isOutstationOwnVehicle ? fromCityId || undefined : undefined,
-      toCityId: isOutstationOwnVehicle ? toCityId || undefined : undefined,
+      fromCityId: requiresOutstationDetails
+        ? fromCityId || undefined
+        : undefined,
+      toCityId: requiresOutstationDetails ? toCityId || undefined : undefined,
       kmTravelled:
         isOutstationOwnVehicle && Number.isFinite(kmTravelledValue)
           ? kmTravelledValue
@@ -281,17 +300,18 @@ export function ClaimSubmissionForm({
           <OutstationFields
             ownVehicleUsed={ownVehicleUsed}
             vehicleType={vehicleType}
-            outstationCityId={outstationCityId}
+            outstationStateId={outstationStateId}
             fromCityId={fromCityId}
             toCityId={toCityId}
             kmTravelled={kmTravelled}
             kmLimit={KM_UI_LIMIT}
             kmValidationMessage={kmValidationMessage}
             allowedVehicleTypes={allowedVehicleTypes}
-            cityOptions={cityOptions}
+            stateOptions={stateOptions}
+            cityOptions={filteredCityOptions}
             onOwnVehicleUsedChange={handleOwnVehicleUsedChange}
             onVehicleTypeChange={setVehicleType}
-            onOutstationCityIdChange={setOutstationCityId}
+            onOutstationStateIdChange={handleOutstationStateChange}
             onFromCityIdChange={setFromCityId}
             onToCityIdChange={setToCityId}
             onKmTravelledChange={setKmTravelled}
