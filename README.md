@@ -21,10 +21,11 @@ Set these in `.env.local`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (legacy fallback if publishable key is not set)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_AUTH_CALLBACK_URL`
 - `NEXT_PUBLIC_APP_URL`
-- `ALLOW_PASSWORD_LOGIN_IN_PROD` (set to `true` or `1` to enable email/password login in production)
+- `ALLOW_PASSWORD_LOGIN_IN_PROD` (set to `true` or `1` to enable email/password login in production.)
 
 ## Run Locally
 

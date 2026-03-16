@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import type { ClaimAvailableAction } from '@/features/claims/types'
+import type {
+  FinanceActionType,
+  PaginatedFinanceQueue,
+} from '@/features/finance/types'
 import {
   bulkFinanceClaimsAction,
   submitFinanceAction,
@@ -12,7 +16,6 @@ import {
 import { CursorPaginationControls } from '@/components/ui/cursor-pagination-controls'
 import { FinanceClaimRow } from '@/features/finance/components/finance-claim-row'
 import { FinanceQueueToolbar } from '@/features/finance/components/finance-queue-toolbar'
-import type { PaginatedFinanceQueue } from '@/features/finance/types'
 
 type FinanceQueueProps = {
   queue: PaginatedFinanceQueue
@@ -32,6 +35,8 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
   const [processingClaimId, setProcessingClaimId] = useState<string | null>(
     null
   )
+  const [pendingBulkAction, setPendingBulkAction] =
+    useState<FinanceActionType | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
@@ -49,7 +54,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
   )
 
   const bulkActions = useMemo(() => {
-    const actions = new Map<'issued' | 'finance_rejected', string>()
+    const actions = new Map<FinanceActionType, string>()
 
     queue.data.forEach((item) => {
       item.availableActions.forEach((action) => {
@@ -86,13 +91,14 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
     setSelectedIds(checked ? selectableClaimIds : [])
   }
 
-  async function handleBulkAction(action: 'issued' | 'finance_rejected') {
+  async function handleBulkAction(action: FinanceActionType) {
     if (selectedIds.length === 0) {
       return
     }
 
     setIsSubmitting(true)
     setProcessingClaimId(null)
+    setPendingBulkAction(action)
     setError(null)
 
     try {
@@ -118,6 +124,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
       toast.error(message)
     } finally {
       setIsSubmitting(false)
+      setPendingBulkAction(null)
     }
   }
 
@@ -201,13 +208,16 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
         />
       </label>
 
-      <label className="mt-3 inline-flex items-center gap-2 text-sm text-foreground/80">
+      <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
         <input
           type="checkbox"
           checked={allowResubmit}
-          onChange={(event) => setAllowResubmit(event.target.checked)}
+          onChange={(e) => setAllowResubmit(e.target.checked)}
+          className="h-4 w-4 rounded"
         />
-        For rejection, return claim to employee for modification
+        <span className="text-amber-700 dark:text-amber-400">
+          Allow employee to raise a new claim (applies to Finance Reject only)
+        </span>
       </label>
 
       <div className="mt-4">
@@ -220,19 +230,21 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
           onToggleSelectAll={toggleSelectAll}
           onBulkAction={handleBulkAction}
           disabled={isSubmitting}
+          processingAction={pendingBulkAction}
         />
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-215 border-collapse text-sm">
+          <table className="w-full min-w-185 border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-left text-foreground/70">
                 <th className="px-3 py-2 font-medium">Select</th>
-                <th className="px-3 py-2 font-medium">Claim ID</th>
+                <th className="px-3 py-2 font-medium whitespace-nowrap">
+                  Claim ID
+                </th>
                 <th className="px-3 py-2 font-medium">Employee</th>
                 <th className="px-3 py-2 font-medium">Date</th>
                 <th className="px-3 py-2 font-medium">Location</th>
                 <th className="px-3 py-2 font-medium">Amount</th>
-                <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -241,7 +253,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
                   key={item.claim.id}
                   item={item}
                   checked={selectedSet.has(item.claim.id)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting && processingClaimId === item.claim.id}
                   selectable={selectableClaimIds.includes(item.claim.id)}
                   isProcessingRow={processingClaimId === item.claim.id}
                   onToggle={toggleClaim}

@@ -1,15 +1,18 @@
 import Link from 'next/link'
 
+import type { ClaimStatusCatalogItem } from '@/features/claims/types'
 import type { ApprovalHistoryFilters } from '@/features/approvals/types'
 
 type ApprovalFiltersBarProps = {
   filters: ApprovalHistoryFilters
+  statusCatalog: ClaimStatusCatalogItem[]
   exportCurrentPageHref: string
   exportAllHref: string
 }
 
 export function ApprovalFiltersBar({
   filters,
+  statusCatalog,
   exportCurrentPageHref,
   exportAllHref,
 }: ApprovalFiltersBarProps) {
@@ -20,8 +23,24 @@ export function ApprovalFiltersBar({
       <form
         action="/approvals"
         method="get"
-        className="mt-4 grid gap-3 md:grid-cols-4"
+        className="mt-4 grid gap-3 md:grid-cols-3"
       >
+        <label className="space-y-1 text-sm">
+          <span className="text-foreground/80">Status</span>
+          <select
+            name="claimStatus"
+            defaultValue={filters.claimStatus ?? ''}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+          >
+            <option value="">All Statuses</option>
+            {statusCatalog.map((status) => (
+              <option key={status.status} value={status.status}>
+                {status.display_label}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="space-y-1 text-sm">
           <span className="text-foreground/80">Employee Name</span>
           <input
@@ -33,80 +52,16 @@ export function ApprovalFiltersBar({
         </label>
 
         <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Actor Bucket</span>
-          <select
-            name="actorFilter"
-            defaultValue={filters.actorFilter}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-          >
-            <option value="all">Select All</option>
-            <option value="sbh">State Business Head</option>
-            <option value="hod">HOD (Final-Level Approver)</option>
-            <option value="finance">Finance Team</option>
-          </select>
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Claim Date From</span>
+          <span className="text-foreground/80">Claim Date</span>
           <input
-            name="claimDateFrom"
+            name="claimDate"
             type="date"
-            defaultValue={filters.claimDateFrom ?? ''}
+            defaultValue={filters.claimDate ?? ''}
             className="w-full rounded-lg border border-border bg-background px-3 py-2"
           />
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Claim Date To</span>
-          <input
-            name="claimDateTo"
-            type="date"
-            defaultValue={filters.claimDateTo ?? ''}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">HOD Approved From</span>
-          <input
-            name="hodApprovedFrom"
-            type="date"
-            defaultValue={filters.hodApprovedFrom ?? ''}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">HOD Approved To</span>
-          <input
-            name="hodApprovedTo"
-            type="date"
-            defaultValue={filters.hodApprovedTo ?? ''}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Finance Approved From</span>
-          <input
-            name="financeApprovedFrom"
-            type="date"
-            defaultValue={filters.financeApprovedFrom ?? ''}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-          />
-        </label>
-
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Finance Approved To</span>
-          <input
-            name="financeApprovedTo"
-            type="date"
-            defaultValue={filters.financeApprovedTo ?? ''}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
-          />
-        </label>
-
-        <div className="md:col-span-4 flex flex-wrap items-center gap-2 pt-1">
+        <div className="md:col-span-3 flex flex-wrap items-center gap-2 pt-1">
           <button
             type="submit"
             className="rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"

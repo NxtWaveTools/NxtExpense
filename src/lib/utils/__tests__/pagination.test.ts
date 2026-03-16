@@ -25,6 +25,15 @@ describe('pagination cursor utils', () => {
     expect(() => decodeCursor('invalid-cursor')).toThrowError('Invalid cursor.')
   })
 
+  it('throws on valid base64 with invalid cursor payload shape', () => {
+    const malformedPayload = Buffer.from(
+      JSON.stringify({ created_at: '2026-03-06T08:00:00.000Z' }),
+      'utf-8'
+    ).toString('base64')
+
+    expect(() => decodeCursor(malformedPayload)).toThrowError('Invalid cursor.')
+  })
+
   it('encodes and decodes cursor trails with null entries', () => {
     const encodedTrail = encodeCursorTrail([null, 'cursor-1', 'cursor-2'])
 
@@ -33,6 +42,21 @@ describe('pagination cursor utils', () => {
       'cursor-1',
       'cursor-2',
     ])
+  })
+
+  it('returns empty cursor trail for invalid payloads', () => {
+    expect(decodeCursorTrail(null)).toEqual([])
+    expect(decodeCursorTrail(undefined)).toEqual([])
+    expect(decodeCursorTrail('not-a-valid-base64')).toEqual([])
+  })
+
+  it('normalizes non-string cursor trail entries to null', () => {
+    const encodedTrail = Buffer.from(
+      JSON.stringify([123, '__NULL_CURSOR__', 'cursor-3']),
+      'utf-8'
+    ).toString('base64')
+
+    expect(decodeCursorTrail(encodedTrail)).toEqual([null, null, 'cursor-3'])
   })
 
   it('builds next link and page number for first cursor page', () => {
@@ -90,5 +114,22 @@ describe('pagination cursor utils', () => {
       'history-1',
       'history-2',
     ])
+  })
+
+  it('keeps first query value when query param contains multiple values', () => {
+    const links = buildCursorNavigationLinks({
+      pathname: '/approvals',
+      query: {
+        actorFilter: ['finance', 'hod'],
+      },
+      cursorKey: 'historyCursor',
+      trailKey: 'historyTrail',
+      currentCursor: 'history-1',
+      currentTrail: [null],
+      nextCursor: null,
+    })
+
+    expect(links.nextHref).toBeNull()
+    expect(links.backHref).toBe('/approvals?actorFilter=finance')
   })
 })

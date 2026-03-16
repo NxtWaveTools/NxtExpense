@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-import { getEmployeeByEmail } from '@/features/employees/queries'
+import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import type {
   ApprovalHistoryFilters,
   BulkApprovalActionResult,
@@ -95,6 +95,7 @@ function getPendingFilters(
   return {
     employeeName: normalizedFilters.employeeName,
     actorFilter: normalizedFilters.actorFilter,
+    claimStatus: normalizedFilters.claimStatus,
   }
 }
 

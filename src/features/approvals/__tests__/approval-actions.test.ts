@@ -163,6 +163,18 @@ describe('approvalHistoryFiltersSchema', () => {
     expect(parsed.success).toBe(true)
     if (parsed.success) {
       expect(parsed.data.actorFilter).toBe('all')
+      expect(parsed.data.claimStatus).toBeUndefined()
+    }
+  })
+
+  it('accepts claimStatus filter', () => {
+    const parsed = approvalHistoryFiltersSchema.safeParse({
+      claimStatus: 'L1_PENDING',
+    })
+
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.claimStatus).toBe('L1_PENDING')
     }
   })
 
@@ -185,30 +197,19 @@ describe('approvalHistoryFiltersSchema', () => {
 
   it('accepts ISO date filters', () => {
     const parsed = approvalHistoryFiltersSchema.safeParse({
-      claimDateFrom: '2026-03-01',
-      claimDateTo: '2026-03-07',
+      claimDate: '2026-03-01',
     })
     expect(parsed.success).toBe(true)
   })
 
   it('accepts DD/MM/YYYY date filters', () => {
     const parsed = approvalHistoryFiltersSchema.safeParse({
-      claimDateFrom: '01/03/2026',
-      claimDateTo: '07/03/2026',
+      claimDate: '01/03/2026',
     })
     expect(parsed.success).toBe(true)
     if (parsed.success) {
-      expect(parsed.data.claimDateFrom).toBe('2026-03-01')
-      expect(parsed.data.claimDateTo).toBe('2026-03-07')
+      expect(parsed.data.claimDate).toBe('2026-03-01')
     }
-  })
-
-  it('rejects inverted claim date range', () => {
-    const parsed = approvalHistoryFiltersSchema.safeParse({
-      claimDateFrom: '2026-03-08',
-      claimDateTo: '2026-03-01',
-    })
-    expect(parsed.success).toBe(false)
   })
 
   it('rejects inverted HOD approval date range', () => {
@@ -249,7 +250,7 @@ describe('approvalHistoryFiltersSchema', () => {
 
   it('rejects invalid date format in filters', () => {
     const parsed = approvalHistoryFiltersSchema.safeParse({
-      claimDateFrom: '03-01-2026',
+      claimDate: '03-01-2026',
     })
     expect(parsed.success).toBe(false)
   })

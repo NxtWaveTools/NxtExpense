@@ -26,8 +26,10 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [allowResubmit, setAllowResubmit] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingBulkAction, setPendingBulkAction] = useState<
+    'approved' | 'rejected' | null
+  >(null)
 
   const selectableIds = useMemo(
     () =>
@@ -67,13 +69,14 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
     }
 
     setIsSubmitting(true)
+    setPendingBulkAction(action)
 
     try {
       const result = await submitBulkApprovalAction({
         claimIds: selectedIds,
         action,
         notes,
-        allowResubmit: action === 'rejected' ? allowResubmit : undefined,
+        allowResubmit: false,
       })
 
       if (result.succeeded > 0) {
@@ -91,7 +94,6 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
       if (result.ok) {
         setSelectedIds([])
         setNotes('')
-        setAllowResubmit(false)
       }
 
       router.refresh()
@@ -99,6 +101,7 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
       toast.error('Unexpected error while processing bulk approval action.')
     } finally {
       setIsSubmitting(false)
+      setPendingBulkAction(null)
     }
   }
 
@@ -146,7 +149,9 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
             disabled={isSubmitting || selectedIds.length === 0}
             className="rounded-lg bg-foreground px-3 py-2 text-xs font-medium text-background disabled:opacity-60"
           >
-            {isSubmitting ? 'Submitting...' : 'Bulk Approve'}
+            {isSubmitting && pendingBulkAction === 'approved'
+              ? 'Approving...'
+              : 'Bulk Approve'}
           </button>
 
           <button
@@ -155,7 +160,9 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
             disabled={isSubmitting || selectedIds.length === 0}
             className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium disabled:opacity-60"
           >
-            {isSubmitting ? 'Submitting...' : 'Bulk Reject'}
+            {isSubmitting && pendingBulkAction === 'rejected'
+              ? 'Rejecting...'
+              : 'Bulk Reject'}
           </button>
         </div>
 
@@ -167,29 +174,21 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
             className="min-h-20 w-full rounded-lg border border-border bg-background px-3 py-2"
           />
         </label>
-
-        <label className="mt-2 inline-flex items-center gap-2 text-sm text-foreground/80">
-          <input
-            type="checkbox"
-            checked={allowResubmit}
-            onChange={(event) => setAllowResubmit(event.target.checked)}
-          />
-          Allow employee modifications and resubmission (for reject)
-        </label>
       </div>
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-195 border-collapse text-sm">
+        <table className="w-full min-w-175 border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-foreground/70">
               <th className="px-3 py-2 font-medium">Select</th>
-              <th className="px-3 py-2 font-medium">Claim ID</th>
+              <th className="px-3 py-2 font-medium whitespace-nowrap">
+                Claim ID
+              </th>
               <th className="px-3 py-2 font-medium">Employee</th>
               <th className="px-3 py-2 font-medium">Role</th>
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Location</th>
               <th className="px-3 py-2 font-medium">Amount</th>
-              <th className="px-3 py-2 font-medium">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -207,12 +206,17 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
                     }
                   />
                 </td>
-                <td className="px-3 py-3 font-medium">
-                  {row.claim.claim_number}
+                <td className="px-3 py-3 font-medium whitespace-nowrap">
+                  <Link
+                    href={`/approvals/${row.claim.id}`}
+                    className="inline-block whitespace-nowrap underline decoration-border underline-offset-4 hover:decoration-foreground"
+                  >
+                    {row.claim.claim_number}
+                  </Link>
                 </td>
                 <td className="px-3 py-3">{row.owner.employee_name}</td>
                 <td className="px-3 py-3 text-xs text-foreground/70">
-                  {row.owner.designation}
+                  {row.owner.designations?.designation_name ?? ''}
                 </td>
                 <td className="px-3 py-3">
                   {formatDate(row.claim.claim_date)}
@@ -220,14 +224,6 @@ export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
                 <td className="px-3 py-3">{row.claim.work_location}</td>
                 <td className="px-3 py-3">
                   Rs. {Number(row.claim.total_amount).toFixed(2)}
-                </td>
-                <td className="px-3 py-3">
-                  <Link
-                    href={`/approvals/${row.claim.id}`}
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium"
-                  >
-                    Review
-                  </Link>
                 </td>
               </tr>
             ))}

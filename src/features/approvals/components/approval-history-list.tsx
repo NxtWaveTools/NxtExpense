@@ -1,11 +1,10 @@
 import Link from 'next/link'
 
-import { formatDate, formatDatetime } from '@/lib/utils/date'
+import { formatDate } from '@/lib/utils/date'
 import { CursorPaginationControls } from '@/components/ui/cursor-pagination-controls'
 
 import { getApprovalHistoryAction } from '@/features/approvals/actions'
 import { ClaimStatusBadge } from '@/features/claims/components/claim-status-badge'
-import type { ClaimStatusCatalogItem } from '@/features/claims/types'
 
 type ApprovalHistoryPayload = Awaited<
   ReturnType<typeof getApprovalHistoryAction>
@@ -13,7 +12,7 @@ type ApprovalHistoryPayload = Awaited<
 
 type ApprovalHistoryListProps = {
   history: ApprovalHistoryPayload
-  statusCatalog: ClaimStatusCatalogItem[]
+  showAmountColumn: boolean
   pagination: {
     backHref: string | null
     nextHref: string | null
@@ -23,7 +22,7 @@ type ApprovalHistoryListProps = {
 
 export function ApprovalHistoryList({
   history,
-  statusCatalog,
+  showAmountColumn,
   pagination,
 }: ApprovalHistoryListProps) {
   if (history.data.length === 0) {
@@ -41,8 +40,8 @@ export function ApprovalHistoryList({
     <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
       <h2 className="mb-4 text-lg font-semibold">Approval History</h2>
       <p className="mb-4 text-xs text-foreground/60">
-        Each row is a workflow event. A single claim can appear multiple times
-        as it moves through different approval levels and finance actions.
+        Each row shows one update made on a claim, along with the key approval
+        milestone dates.
       </p>
 
       <CursorPaginationControls
@@ -52,16 +51,18 @@ export function ApprovalHistoryList({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-280 border-collapse text-sm">
+        <table className="w-full min-w-240 border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-foreground/70">
-              <th className="px-3 py-2 font-medium">Claim ID</th>
+              <th className="px-3 py-2 font-medium whitespace-nowrap">
+                Claim ID
+              </th>
               <th className="px-3 py-2 font-medium">Employee</th>
               <th className="px-3 py-2 font-medium">Role</th>
               <th className="px-3 py-2 font-medium">Claim Date</th>
-              <th className="px-3 py-2 font-medium">Actor</th>
-              <th className="px-3 py-2 font-medium">Action</th>
-              <th className="px-3 py-2 font-medium">Action Date</th>
+              {showAmountColumn ? (
+                <th className="px-3 py-2 font-medium">Amount</th>
+              ) : null}
               <th className="px-3 py-2 font-medium">HOD Approved Date</th>
               <th className="px-3 py-2 font-medium">Finance Approved Date</th>
               <th className="px-3 py-2 font-medium">Current Status</th>
@@ -70,10 +71,10 @@ export function ApprovalHistoryList({
           <tbody>
             {history.data.map((row) => (
               <tr key={row.actionId} className="border-b border-border/70">
-                <td className="px-3 py-3 font-medium">
+                <td className="px-3 py-3 font-medium whitespace-nowrap">
                   <Link
-                    href={`/claims/${row.claimId}`}
-                    className="underline decoration-border underline-offset-4 hover:decoration-foreground"
+                    href={`/claims/${row.claimId}?from=approvals`}
+                    className="inline-block whitespace-nowrap underline decoration-border underline-offset-4 hover:decoration-foreground"
                   >
                     {row.claimNumber}
                   </Link>
@@ -83,28 +84,23 @@ export function ApprovalHistoryList({
                   {row.ownerDesignation}
                 </td>
                 <td className="px-3 py-3">{formatDate(row.claimDate)}</td>
+                {showAmountColumn ? (
+                  <td className="px-3 py-3">
+                    Rs. {Number(row.totalAmount).toFixed(2)}
+                  </td>
+                ) : null}
                 <td className="px-3 py-3">
-                  <p>{row.actorEmail}</p>
-                  <p className="text-xs text-foreground/60">
-                    {row.actorDesignation ?? 'Unknown Role'}
-                  </p>
-                </td>
-                <td className="px-3 py-3 capitalize">
-                  {row.action.replaceAll('_', ' ')}
-                </td>
-                <td className="px-3 py-3">{formatDatetime(row.actedAt)}</td>
-                <td className="px-3 py-3">
-                  {row.hodApprovedAt ? formatDatetime(row.hodApprovedAt) : '-'}
+                  {row.hodApprovedAt ? formatDate(row.hodApprovedAt) : '-'}
                 </td>
                 <td className="px-3 py-3">
                   {row.financeApprovedAt
-                    ? formatDatetime(row.financeApprovedAt)
+                    ? formatDate(row.financeApprovedAt)
                     : '-'}
                 </td>
                 <td className="px-3 py-3">
                   <ClaimStatusBadge
-                    status={row.claimStatus}
-                    statusCatalog={statusCatalog}
+                    statusName={row.claimStatusName}
+                    statusDisplayColor={row.claimStatusDisplayColor}
                   />
                 </td>
               </tr>

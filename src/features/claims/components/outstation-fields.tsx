@@ -1,26 +1,24 @@
-import { Car, MapPin, Receipt, Route } from 'lucide-react'
+import { Car, MapPin, Route } from 'lucide-react'
 
-import type { TransportType, VehicleType } from '@/features/claims/types'
+import type { SelectOption, VehicleType } from '@/features/claims/types'
 
 type OutstationFieldsProps = {
   ownVehicleUsed: boolean
   vehicleType: VehicleType
-  transportType: TransportType
-  outstationLocation: string
-  fromCity: string
-  toCity: string
+  outstationCityId: string
+  fromCityId: string
+  toCityId: string
   kmTravelled: string
-  taxiAmount: string
-  allowedVehicleTypes: readonly VehicleType[]
-  transportTypeOptions: readonly TransportType[]
+  kmLimit: number
+  kmValidationMessage: string | null
+  allowedVehicleTypes: readonly SelectOption[]
+  cityOptions: readonly SelectOption[]
   onOwnVehicleUsedChange: (value: boolean) => void
   onVehicleTypeChange: (value: VehicleType) => void
-  onTransportTypeChange: (value: TransportType) => void
-  onOutstationLocationChange: (value: string) => void
-  onFromCityChange: (value: string) => void
-  onToCityChange: (value: string) => void
+  onOutstationCityIdChange: (value: string) => void
+  onFromCityIdChange: (value: string) => void
+  onToCityIdChange: (value: string) => void
   onKmTravelledChange: (value: string) => void
-  onTaxiAmountChange: (value: string) => void
 }
 
 export function OutstationFields(props: OutstationFieldsProps) {
@@ -28,7 +26,7 @@ export function OutstationFields(props: OutstationFieldsProps) {
     <div className="space-y-4">
       <div className="space-y-2">
         <label
-          htmlFor="outstationLocation"
+          htmlFor="outstationCityId"
           className="text-sm font-medium text-foreground/80"
         >
           <span className="inline-flex items-center gap-2">
@@ -36,16 +34,22 @@ export function OutstationFields(props: OutstationFieldsProps) {
             Outstation Location
           </span>
         </label>
-        <input
-          id="outstationLocation"
-          name="outstationLocation"
-          value={props.outstationLocation}
+        <select
+          id="outstationCityId"
+          name="outstationCityId"
+          value={props.outstationCityId}
           onChange={(event) =>
-            props.onOutstationLocationChange(event.target.value)
+            props.onOutstationCityIdChange(event.target.value)
           }
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          placeholder="Enter city worked in"
-        />
+        >
+          <option value="">Select city...</option>
+          {props.cityOptions.map((city) => (
+            <option key={city.id} value={city.id}>
+              {city.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <fieldset className="space-y-2">
@@ -100,8 +104,8 @@ export function OutstationFields(props: OutstationFieldsProps) {
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             >
               {props.allowedVehicleTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+                <option key={type.id} value={type.id}>
+                  {type.name}
                 </option>
               ))}
             </select>
@@ -110,21 +114,37 @@ export function OutstationFields(props: OutstationFieldsProps) {
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm font-medium text-foreground/80">
               <span>From City</span>
-              <input
-                name="fromCity"
-                value={props.fromCity}
-                onChange={(event) => props.onFromCityChange(event.target.value)}
+              <select
+                name="fromCityId"
+                value={props.fromCityId}
+                onChange={(event) =>
+                  props.onFromCityIdChange(event.target.value)
+                }
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              />
+              >
+                <option value="">Select city...</option>
+                {props.cityOptions.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="space-y-2 text-sm font-medium text-foreground/80">
               <span>To City</span>
-              <input
-                name="toCity"
-                value={props.toCity}
-                onChange={(event) => props.onToCityChange(event.target.value)}
+              <select
+                name="toCityId"
+                value={props.toCityId}
+                onChange={(event) => props.onToCityIdChange(event.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              />
+              >
+                <option value="">Select city...</option>
+                {props.cityOptions.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -137,6 +157,7 @@ export function OutstationFields(props: OutstationFieldsProps) {
               name="kmTravelled"
               type="number"
               min={0}
+              max={props.kmLimit}
               step="0.1"
               value={props.kmTravelled}
               onChange={(event) =>
@@ -144,49 +165,14 @@ export function OutstationFields(props: OutstationFieldsProps) {
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
+            {props.kmValidationMessage ? (
+              <p className="text-xs text-red-600 dark:text-red-300">
+                {props.kmValidationMessage}
+              </p>
+            ) : null}
           </label>
         </>
-      ) : (
-        <>
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-foreground/80">
-              Transport Type
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {props.transportTypeOptions.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => props.onTransportTypeChange(option)}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
-                    props.transportType === option
-                      ? 'border-foreground bg-foreground text-background'
-                      : 'border-border bg-background'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="space-y-2 text-sm font-medium text-foreground/80">
-            <span className="inline-flex items-center gap-2">
-              <Receipt className="size-4" aria-hidden="true" />
-              Taxi Bill Amount
-            </span>
-            <input
-              name="taxiAmount"
-              type="number"
-              min={0}
-              step="0.01"
-              value={props.taxiAmount}
-              onChange={(event) => props.onTaxiAmountChange(event.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-          </label>
-        </>
-      )}
+      ) : null}
     </div>
   )
 }

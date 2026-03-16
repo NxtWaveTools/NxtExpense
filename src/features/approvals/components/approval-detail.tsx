@@ -1,24 +1,29 @@
 import { formatDate } from '@/lib/utils/date'
 
+import { SubmittedClaimDetails } from '@/features/claims/components/submitted-claim-details'
 import type { ClaimWithItems } from '@/features/claims/types'
-import type { Employee } from '@/features/employees/types'
+import type { EmployeeRow } from '@/lib/services/employee-service'
 
 function resolveNextApprover(
   claim: ClaimWithItems['claim'],
-  owner: Employee
+  owner: EmployeeRow
 ): string | null {
-  if (claim.status !== 'pending_approval') return null
+  // current_approval_level is the DB-sourced numeric level (1 = SBH, 2 = HOD).
+  // Only show the next approver when the claim is actively waiting at L1 or L2.
   const level = claim.current_approval_level
-  if (level === 1) return owner.approval_email_level_1
-  if (level === 2) return owner.approval_email_level_2
-  if (level === 3) return owner.approval_email_level_3
+  if (!level || level > 2 || claim.is_terminal || claim.is_rejection)
+    return null
+  if (level === 1)
+    return owner.approval_employee_id_level_1 ? 'Level 1 Approver (SBH)' : null
+  if (level === 2)
+    return owner.approval_employee_id_level_3 ? 'Level 2 Approver (HOD)' : null
   return null
 }
 
 type ApprovalDetailProps = {
   claim: ClaimWithItems['claim']
   items: ClaimWithItems['items']
-  owner: Employee
+  owner: EmployeeRow
 }
 
 export function ApprovalDetail({ claim, items, owner }: ApprovalDetailProps) {
@@ -30,12 +35,16 @@ export function ApprovalDetail({ claim, items, owner }: ApprovalDetailProps) {
       <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
         <div className="rounded-lg border border-border bg-background p-3">
           <dt className="text-foreground/60">Claim ID</dt>
-          <dd className="font-medium">{claim.claim_number}</dd>
+          <dd className="font-medium whitespace-nowrap">
+            {claim.claim_number}
+          </dd>
         </div>
         <div className="rounded-lg border border-border bg-background p-3">
           <dt className="text-foreground/60">Employee</dt>
           <dd>{owner.employee_name}</dd>
-          <dd className="text-xs text-foreground/60">{owner.designation}</dd>
+          <dd className="text-xs text-foreground/60">
+            {owner.designations?.designation_name ?? ''}
+          </dd>
         </div>
         <div className="rounded-lg border border-border bg-background p-3">
           <dt className="text-foreground/60">Claim Date</dt>
@@ -56,6 +65,8 @@ export function ApprovalDetail({ claim, items, owner }: ApprovalDetailProps) {
           </div>
         ) : null}
       </dl>
+
+      <SubmittedClaimDetails claim={claim} />
 
       <h3 className="mt-5 text-sm font-semibold uppercase tracking-[0.12em] text-foreground/70">
         Line Items

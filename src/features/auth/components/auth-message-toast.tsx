@@ -9,6 +9,7 @@ type AuthMessageToastProps = {
 
 const TOAST_MESSAGES: Record<string, string> = {
   signed_out: 'Signed out successfully.',
+  session_reset: 'Session was reset. Please sign in again.',
 }
 
 export function AuthMessageToast({ message }: AuthMessageToastProps) {
