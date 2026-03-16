@@ -7,10 +7,10 @@ type SubmittedField = {
 
 function getSubmittedFields(claim: ClaimWithItems['claim']): SubmittedField[] {
   const fields: Array<SubmittedField | null> = [
-    claim.outstation_city_name
+    claim.outstation_state_name
       ? {
-          label: 'Outstation Location',
-          value: claim.outstation_city_name,
+          label: 'State',
+          value: claim.outstation_state_name,
         }
       : null,
     claim.own_vehicle_used === null

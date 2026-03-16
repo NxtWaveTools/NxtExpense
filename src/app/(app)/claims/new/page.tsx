@@ -10,6 +10,7 @@ import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import {
   getAllWorkLocations,
+  getAllStates,
   getAllCities,
   getVehicleTypesByDesignation,
   getExpenseRateByType,
@@ -25,11 +26,12 @@ export default async function NewClaimPage() {
   }
 
   // Fetch lookup data from DB
-  const [workLocations, allowedVehicles, cities] = await Promise.all([
+  const [workLocations, allowedVehicles, states, cities] = await Promise.all([
     getAllWorkLocations(supabase),
     employee.designation_id
       ? getVehicleTypesByDesignation(supabase, employee.designation_id)
       : Promise.resolve([]),
+    getAllStates(supabase),
     getAllCities(supabase),
   ])
 
@@ -38,7 +40,12 @@ export default async function NewClaimPage() {
     id: vt.id,
     name: vt.vehicle_name,
   }))
-  const cityOptions = cities.map((c) => ({ id: c.id, name: c.city_name }))
+  const stateOptions = states.map((s) => ({ id: s.id, name: s.state_name }))
+  const cityOptions = cities.map((c) => ({
+    id: c.id,
+    name: c.city_name,
+    stateId: c.state_id,
+  }))
 
   // Build rate snapshot from new lookup tables
   const baseLocationId = workLocations.find(
@@ -100,6 +107,7 @@ export default async function NewClaimPage() {
           <ClaimSubmissionForm
             allowedVehicleTypes={allowedVehicleTypes}
             workLocationOptions={workLocationOptions}
+            stateOptions={stateOptions}
             cityOptions={cityOptions}
             claimRateSnapshot={claimRateSnapshot}
             initialValues={null}

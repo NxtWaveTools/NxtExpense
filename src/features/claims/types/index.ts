@@ -17,6 +17,9 @@ export type ExpenseItemType = string
 /** A simple { id, name } option for select dropdowns */
 export type SelectOption = { id: string; name: string }
 
+/** City dropdown option with parent state linkage for dynamic filtering */
+export type CityOption = SelectOption & { stateId: string }
+
 /** Full DB-backed work location object with behavioral flags */
 export type WorkLocationOption = ConfigWorkLocation
 
@@ -34,9 +37,11 @@ export type Claim = {
   work_location: WorkLocation
   own_vehicle_used: boolean | null
   vehicle_type: VehicleType | null
+  outstation_state_id?: string | null
   outstation_city_id: string | null
   from_city_id: string | null
   to_city_id: string | null
+  outstation_state_name?: string | null
   outstation_city_name: string | null
   from_city_name: string | null
   to_city_name: string | null
@@ -80,6 +85,7 @@ export type ClaimFormValues = {
   ownVehicleUsed?: boolean
   vehicleType?: VehicleType
   transportType?: TransportType
+  outstationStateId?: string
   outstationCityId?: string
   fromCityId?: string
   toCityId?: string
@@ -95,6 +101,7 @@ export type ClaimFormInitialValues = {
   vehicleType?: VehicleType | null
   ownVehicleUsed?: boolean | null
   transportType?: TransportType | null
+  outstationStateId?: string | null
   outstationCityId?: string | null
   fromCityId?: string | null
   toCityId?: string | null

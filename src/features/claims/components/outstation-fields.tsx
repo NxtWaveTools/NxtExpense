@@ -5,17 +5,18 @@ import type { SelectOption, VehicleType } from '@/features/claims/types'
 type OutstationFieldsProps = {
   ownVehicleUsed: boolean
   vehicleType: VehicleType
-  outstationCityId: string
+  outstationStateId: string
   fromCityId: string
   toCityId: string
   kmTravelled: string
   kmLimit: number
   kmValidationMessage: string | null
   allowedVehicleTypes: readonly SelectOption[]
+  stateOptions: readonly SelectOption[]
   cityOptions: readonly SelectOption[]
   onOwnVehicleUsedChange: (value: boolean) => void
   onVehicleTypeChange: (value: VehicleType) => void
-  onOutstationCityIdChange: (value: string) => void
+  onOutstationStateIdChange: (value: string) => void
   onFromCityIdChange: (value: string) => void
   onToCityIdChange: (value: string) => void
   onKmTravelledChange: (value: string) => void
@@ -26,30 +27,75 @@ export function OutstationFields(props: OutstationFieldsProps) {
     <div className="space-y-4">
       <div className="space-y-2">
         <label
-          htmlFor="outstationCityId"
+          htmlFor="outstationStateId"
           className="text-sm font-medium text-foreground/80"
         >
           <span className="inline-flex items-center gap-2">
             <MapPin className="size-4" aria-hidden="true" />
-            Outstation Location
+            State
           </span>
         </label>
         <select
-          id="outstationCityId"
-          name="outstationCityId"
-          value={props.outstationCityId}
+          id="outstationStateId"
+          name="outstationStateId"
+          value={props.outstationStateId}
           onChange={(event) =>
-            props.onOutstationCityIdChange(event.target.value)
+            props.onOutstationStateIdChange(event.target.value)
           }
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
         >
-          <option value="">Select city...</option>
-          {props.cityOptions.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}
+          <option value="">Select state...</option>
+          {props.stateOptions.map((state) => (
+            <option key={state.id} value={state.id}>
+              {state.name}
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-2 text-sm font-medium text-foreground/80">
+          <span>From City</span>
+          <select
+            name="fromCityId"
+            value={props.fromCityId}
+            onChange={(event) => props.onFromCityIdChange(event.target.value)}
+            disabled={!props.outstationStateId}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">
+              {props.outstationStateId
+                ? 'Select city...'
+                : 'Select state first...'}
+            </option>
+            {props.cityOptions.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-2 text-sm font-medium text-foreground/80">
+          <span>To City</span>
+          <select
+            name="toCityId"
+            value={props.toCityId}
+            onChange={(event) => props.onToCityIdChange(event.target.value)}
+            disabled={!props.outstationStateId}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">
+              {props.outstationStateId
+                ? 'Select city...'
+                : 'Select state first...'}
+            </option>
+            {props.cityOptions.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <fieldset className="space-y-2">
@@ -109,43 +155,6 @@ export function OutstationFields(props: OutstationFieldsProps) {
                 </option>
               ))}
             </select>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2 text-sm font-medium text-foreground/80">
-              <span>From City</span>
-              <select
-                name="fromCityId"
-                value={props.fromCityId}
-                onChange={(event) =>
-                  props.onFromCityIdChange(event.target.value)
-                }
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select city...</option>
-                {props.cityOptions.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-2 text-sm font-medium text-foreground/80">
-              <span>To City</span>
-              <select
-                name="toCityId"
-                value={props.toCityId}
-                onChange={(event) => props.onToCityIdChange(event.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select city...</option>
-                {props.cityOptions.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
 
           <label className="space-y-2 text-sm font-medium text-foreground/80">
