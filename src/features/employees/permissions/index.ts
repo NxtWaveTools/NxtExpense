@@ -8,7 +8,6 @@ import {
 import {
   getDashboardAccessFromRoles,
   canAccessEmployeeClaimsFromRoles,
-  hasFinanceRole,
 } from '@/lib/services/approval-service'
 import { getVehicleTypesByDesignation } from '@/lib/services/config-service'
 

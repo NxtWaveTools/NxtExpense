@@ -25,7 +25,7 @@ export class DashboardPage {
   }
 
   get financeLink() {
-    return this.page.getByRole('link', { name: /finance queue/i })
+    return this.page.locator('a[href="/finance"]').first()
   }
 
   get designation() {

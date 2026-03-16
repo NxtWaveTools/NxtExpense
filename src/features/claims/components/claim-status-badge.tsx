@@ -1,4 +1,3 @@
-import type { ClaimStatusCatalogItem } from '@/features/claims/types'
 import { getClaimStatusDisplayLabel } from '@/lib/utils/claim-status'
 
 // Keys match display_color values stored in claim_statuses.display_color

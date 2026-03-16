@@ -60,11 +60,6 @@ export const claimSubmissionSchema = z.object({
     .number()
     .min(0, 'Taxi amount cannot be negative.')
     .optional(),
-  accommodationNights: z.coerce
-    .number()
-    .int('Accommodation nights must be a whole number.')
-    .min(0, 'Accommodation nights cannot be negative.')
-    .optional(),
   foodWithPrincipalsAmount: z.coerce
     .number()
     .min(0, 'Food with principals amount cannot be negative.')

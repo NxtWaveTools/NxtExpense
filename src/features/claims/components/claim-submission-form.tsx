@@ -19,7 +19,6 @@ import type {
   ClaimFormInitialValues,
   ClaimFormValues,
   SelectOption,
-  TransportType,
   VehicleType,
   WorkLocation,
   WorkLocationOption,
@@ -28,7 +27,6 @@ import type {
 type ClaimSubmissionFormProps = {
   allowedVehicleTypes: readonly SelectOption[]
   workLocationOptions: readonly WorkLocationOption[]
-  transportTypeOptions: readonly SelectOption[]
   cityOptions: readonly SelectOption[]
   claimRateSnapshot: ClaimRateSnapshot
   initialValues?: ClaimFormInitialValues | null
@@ -37,7 +35,6 @@ type ClaimSubmissionFormProps = {
 export function ClaimSubmissionForm({
   allowedVehicleTypes,
   workLocationOptions,
-  transportTypeOptions,
   cityOptions,
   claimRateSnapshot,
   initialValues,
@@ -62,9 +59,6 @@ export function ClaimSubmissionForm({
   const [ownVehicleUsed, setOwnVehicleUsed] = useState(
     initialValues?.ownVehicleUsed ?? true
   )
-  const [transportType, setTransportType] = useState<TransportType>(
-    initialValues?.transportType ?? transportTypeOptions[0]?.id ?? ''
-  )
   const [outstationCityId, setOutstationCityId] = useState(
     initialValues?.outstationCityId ?? ''
   )
@@ -72,14 +66,6 @@ export function ClaimSubmissionForm({
   const [toCityId, setToCityId] = useState(initialValues?.toCityId ?? '')
   const [kmTravelled, setKmTravelled] = useState(
     initialValues?.kmTravelled ? String(initialValues.kmTravelled) : ''
-  )
-  const [taxiAmount, setTaxiAmount] = useState(
-    initialValues?.taxiAmount ? String(initialValues.taxiAmount) : ''
-  )
-  const [accommodationNights, setAccommodationNights] = useState(
-    initialValues?.accommodationNights
-      ? String(initialValues.accommodationNights)
-      : ''
   )
   const [foodWithPrincipalsAmount, setFoodWithPrincipalsAmount] = useState(
     initialValues?.foodWithPrincipalsAmount
@@ -91,10 +77,32 @@ export function ClaimSubmissionForm({
 
   const todayIso = dayjs().format('YYYY-MM-DD')
 
+  const KM_UI_LIMIT = 150
+
   const selectedLocation = useMemo(
     () => workLocationOptions.find((wl) => wl.id === workLocation) ?? null,
     [workLocation, workLocationOptions]
   )
+
+  const kmValidationMessage = useMemo(() => {
+    const kmValue = Number.parseFloat(kmTravelled)
+    const requiresOutstationDetails =
+      selectedLocation?.requires_outstation_details ?? false
+
+    if (
+      !requiresOutstationDetails ||
+      !ownVehicleUsed ||
+      !Number.isFinite(kmValue)
+    ) {
+      return null
+    }
+
+    if (kmValue > KM_UI_LIMIT) {
+      return `KM travelled cannot exceed ${KM_UI_LIMIT}.`
+    }
+
+    return null
+  }, [kmTravelled, ownVehicleUsed, selectedLocation])
 
   const summary = useMemo(() => {
     return getClaimSummaryPreview({
@@ -104,15 +112,13 @@ export function ClaimSubmissionForm({
       requiresOutstationDetails:
         selectedLocation?.requires_outstation_details ?? false,
       ownVehicleUsed,
-      transportType,
-      transportTypeName:
-        transportTypeOptions.find((t) => t.id === transportType)?.name ?? '',
+      transportType: '',
+      transportTypeName: 'Taxi',
       vehicleType,
       vehicleTypeName:
         allowedVehicleTypes.find((v) => v.id === vehicleType)?.name ?? '',
       kmTravelled,
-      taxiAmount,
-      accommodationNights,
+      taxiAmount: '',
       foodWithPrincipalsAmount,
       claimRateSnapshot,
     })
@@ -120,26 +126,21 @@ export function ClaimSubmissionForm({
     workLocation,
     selectedLocation,
     ownVehicleUsed,
-    transportType,
     kmTravelled,
-    taxiAmount,
     vehicleType,
-    accommodationNights,
     foodWithPrincipalsAmount,
+    allowedVehicleTypes,
     claimRateSnapshot,
   ])
 
   function handleOwnVehicleUsedChange(value: boolean) {
     setOwnVehicleUsed(value)
 
-    if (value) {
-      setTaxiAmount('')
-      return
+    if (!value) {
+      setFromCityId('')
+      setToCityId('')
+      setKmTravelled('')
     }
-
-    setFromCityId('')
-    setToCityId('')
-    setKmTravelled('')
   }
 
   const showFoodWithPrincipals =
@@ -156,12 +157,16 @@ export function ClaimSubmissionForm({
       return
     }
 
+    if (kmValidationMessage) {
+      setError(kmValidationMessage)
+      toast.error(kmValidationMessage)
+      return
+    }
+
     setIsSubmitting(true)
     setError(null)
 
     const kmTravelledValue = Number.parseFloat(kmTravelled)
-    const taxiAmountValue = Number.parseFloat(taxiAmount)
-    const accommodationNightsValue = Number.parseInt(accommodationNights, 10)
     const fwpAmountValue = Number.parseFloat(foodWithPrincipalsAmount)
     const requiresOutstationDetails =
       selectedLocation?.requires_outstation_details ?? false
@@ -177,10 +182,6 @@ export function ClaimSubmissionForm({
         requiresVehicleSelection || isOutstationOwnVehicle
           ? vehicleType || undefined
           : undefined,
-      transportType:
-        requiresOutstationDetails && !ownVehicleUsed
-          ? transportType || undefined
-          : undefined,
       outstationCityId: requiresOutstationDetails
         ? outstationCityId || undefined
         : undefined,
@@ -189,18 +190,6 @@ export function ClaimSubmissionForm({
       kmTravelled:
         isOutstationOwnVehicle && Number.isFinite(kmTravelledValue)
           ? kmTravelledValue
-          : undefined,
-      taxiAmount:
-        requiresOutstationDetails &&
-        !ownVehicleUsed &&
-        Number.isFinite(taxiAmountValue)
-          ? taxiAmountValue
-          : undefined,
-      accommodationNights:
-        requiresOutstationDetails &&
-        Number.isFinite(accommodationNightsValue) &&
-        accommodationNightsValue > 0
-          ? accommodationNightsValue
           : undefined,
       foodWithPrincipalsAmount:
         requiresOutstationDetails &&
@@ -225,8 +214,7 @@ export function ClaimSubmissionForm({
           ? `Claim submitted successfully (${result.claimNumber}).`
           : 'Claim submitted successfully.'
       )
-      router.push('/claims')
-      router.refresh()
+      router.replace('/claims')
     } catch {
       const message = 'Unexpected error while submitting claim.'
       setError(message)
@@ -311,27 +299,22 @@ export function ClaimSubmissionForm({
           <OutstationFields
             ownVehicleUsed={ownVehicleUsed}
             vehicleType={vehicleType}
-            transportType={transportType}
             outstationCityId={outstationCityId}
             fromCityId={fromCityId}
             toCityId={toCityId}
             kmTravelled={kmTravelled}
-            taxiAmount={taxiAmount}
-            accommodationNights={accommodationNights}
+            kmLimit={KM_UI_LIMIT}
+            kmValidationMessage={kmValidationMessage}
             foodWithPrincipalsAmount={foodWithPrincipalsAmount}
             allowedVehicleTypes={allowedVehicleTypes}
-            transportTypeOptions={transportTypeOptions}
             cityOptions={cityOptions}
             showFoodWithPrincipals={showFoodWithPrincipals}
             onOwnVehicleUsedChange={handleOwnVehicleUsedChange}
             onVehicleTypeChange={setVehicleType}
-            onTransportTypeChange={setTransportType}
             onOutstationCityIdChange={setOutstationCityId}
             onFromCityIdChange={setFromCityId}
             onToCityIdChange={setToCityId}
             onKmTravelledChange={setKmTravelled}
-            onTaxiAmountChange={setTaxiAmount}
-            onAccommodationNightsChange={setAccommodationNights}
             onFoodWithPrincipalsAmountChange={setFoodWithPrincipalsAmount}
           />
         ) : null}

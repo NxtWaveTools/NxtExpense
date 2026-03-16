@@ -171,12 +171,8 @@ export async function submitClaimAction(
         return { ok: false, error: 'KM travelled must be greater than zero.' }
       }
     } else {
-      if (!input.transportType?.trim()) {
-        return {
-          ok: false,
-          error: 'Transport type is required when not using own vehicle.',
-        }
-      }
+      // Transport selection is intentionally hidden in the current UI phase.
+      // For no-own-vehicle outstation claims, transport type defaults server-side.
     }
   }
 
@@ -232,7 +228,6 @@ export async function submitClaimAction(
       designationId: employee.designation_id ?? '',
       vehicleType: vt,
       kmTravelled: input.kmTravelled ?? 0,
-      accommodationNights: input.accommodationNights,
       foodWithPrincipalsAmount: input.foodWithPrincipalsAmount,
     })
   } else if (wlFlags.requires_outstation_details && !input.ownVehicleUsed) {
@@ -241,7 +236,6 @@ export async function submitClaimAction(
       taxiAmount: input.taxiAmount ?? 0,
       transportTypeName: input.transportType ?? 'Taxi',
       designationId: employee.designation_id ?? '',
-      accommodationNights: input.accommodationNights,
       foodWithPrincipalsAmount: input.foodWithPrincipalsAmount,
     })
   } else {
@@ -355,9 +349,7 @@ export async function submitClaimAction(
       currentApprovalLevel: initialWorkflowState.currentApprovalLevel,
       submittedAt: new Date().toISOString(),
       designationId: employee.designation_id,
-      accommodationNights: isOutstation
-        ? (input.accommodationNights ?? null)
-        : null,
+      accommodationNights: null,
       foodWithPrincipalsAmount: isOutstation
         ? (input.foodWithPrincipalsAmount ?? null)
         : null,
@@ -396,9 +388,7 @@ export async function submitClaimAction(
     currentApprovalLevel: initialWorkflowState.currentApprovalLevel,
     submittedAt: new Date().toISOString(),
     designationId: employee.designation_id,
-    accommodationNights: isOutstation
-      ? (input.accommodationNights ?? null)
-      : null,
+    accommodationNights: null,
     foodWithPrincipalsAmount: isOutstation
       ? (input.foodWithPrincipalsAmount ?? null)
       : null,

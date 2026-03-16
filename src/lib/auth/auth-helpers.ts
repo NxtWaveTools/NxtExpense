@@ -34,14 +34,89 @@ export function hasInvalidAzureTenantPath(oauthUrl: string): boolean {
   }
 }
 
+function parseFirstHeaderValue(headerValue: string | null): string | null {
+  if (!headerValue) return null
+
+  const [firstValue] = headerValue.split(',')
+  const normalizedValue = firstValue?.trim()
+  return normalizedValue ? normalizedValue : null
+}
+
+function parseHttpOrigin(urlValue: string | null): string | null {
+  if (!urlValue) return null
+
+  try {
+    const parsedUrl = new URL(urlValue)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) return null
+    return parsedUrl.origin
+  } catch {
+    return null
+  }
+}
+
+function normalizeHost(host: string): string {
+  const trimmedHost = host.trim().toLowerCase()
+  if (!trimmedHost.startsWith('['))
+    return trimmedHost.split(':')[0] ?? trimmedHost
+
+  const ipv6EndIndex = trimmedHost.indexOf(']')
+  if (ipv6EndIndex === -1) return trimmedHost
+  return trimmedHost.slice(0, ipv6EndIndex + 1)
+}
+
+function isLocalhostHost(host: string): boolean {
+  const normalizedHost = normalizeHost(host)
+  return (
+    normalizedHost === 'localhost' ||
+    normalizedHost === '127.0.0.1' ||
+    normalizedHost === '[::1]'
+  )
+}
+
+function getProtocolFromOrigin(origin: string | null): string | null {
+  if (!origin) return null
+  try {
+    return new URL(origin).protocol.replace(':', '')
+  } catch {
+    return null
+  }
+}
+
 export async function getRequestOrigin(): Promise<string> {
-  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL
+  const requestHeaders = await headers()
+  const requestOrigin =
+    parseHttpOrigin(requestHeaders.get('origin')) ??
+    parseHttpOrigin(requestHeaders.get('referer'))
+  const host =
+    parseFirstHeaderValue(requestHeaders.get('host')) ??
+    parseFirstHeaderValue(requestHeaders.get('x-forwarded-host'))
+  const isNonProduction = process.env.NODE_ENV !== 'production'
+  const isLocalhostRequest = Boolean(
+    (host && isLocalhostHost(host)) ||
+    (requestOrigin && isLocalhostHost(new URL(requestOrigin).host))
+  )
+  const forwardedProtocol = parseFirstHeaderValue(
+    requestHeaders.get('x-forwarded-proto')
+  )
+  const protocol =
+    (isLocalhostRequest ? 'http' : null) ??
+    forwardedProtocol ??
+    getProtocolFromOrigin(requestOrigin) ??
+    (isNonProduction || isLocalhostRequest ? 'http' : 'https')
+
+  if (requestOrigin && (isNonProduction || isLocalhostRequest)) {
+    return requestOrigin
+  }
+
+  if (host && (isNonProduction || isLocalhostRequest)) {
+    return `${protocol}://${host}`
+  }
+
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
   if (configuredAppUrl) return configuredAppUrl.replace(/\/$/, '')
 
-  const requestHeaders = await headers()
-  const host =
-    requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
-  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'http'
+  if (requestOrigin) return requestOrigin
+
   if (!host) return 'http://localhost:3000'
   return `${protocol}://${host}`
 }
@@ -50,7 +125,13 @@ export async function buildOAuthRedirectUrl(
   nextPath = '/dashboard'
 ): Promise<string> {
   const origin = await getRequestOrigin()
-  return `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+  const callbackUrl = new URL('/auth/callback', origin)
+
+  if (nextPath && nextPath !== '/dashboard') {
+    callbackUrl.searchParams.set('next', nextPath)
+  }
+
+  return callbackUrl.toString()
 }
 
 export function getLoginErrorMessage(

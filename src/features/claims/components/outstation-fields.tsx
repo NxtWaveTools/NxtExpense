@@ -1,35 +1,26 @@
-import { Bed, Car, MapPin, Receipt, Route, Utensils } from 'lucide-react'
+import { Car, MapPin, Route, Utensils } from 'lucide-react'
 
-import type {
-  SelectOption,
-  TransportType,
-  VehicleType,
-} from '@/features/claims/types'
+import type { SelectOption, VehicleType } from '@/features/claims/types'
 
 type OutstationFieldsProps = {
   ownVehicleUsed: boolean
   vehicleType: VehicleType
-  transportType: TransportType
   outstationCityId: string
   fromCityId: string
   toCityId: string
   kmTravelled: string
-  taxiAmount: string
-  accommodationNights: string
+  kmLimit: number
+  kmValidationMessage: string | null
   foodWithPrincipalsAmount: string
   allowedVehicleTypes: readonly SelectOption[]
-  transportTypeOptions: readonly SelectOption[]
   cityOptions: readonly SelectOption[]
   showFoodWithPrincipals: boolean
   onOwnVehicleUsedChange: (value: boolean) => void
   onVehicleTypeChange: (value: VehicleType) => void
-  onTransportTypeChange: (value: TransportType) => void
   onOutstationCityIdChange: (value: string) => void
   onFromCityIdChange: (value: string) => void
   onToCityIdChange: (value: string) => void
   onKmTravelledChange: (value: string) => void
-  onTaxiAmountChange: (value: string) => void
-  onAccommodationNightsChange: (value: string) => void
   onFoodWithPrincipalsAmountChange: (value: string) => void
 }
 
@@ -169,6 +160,7 @@ export function OutstationFields(props: OutstationFieldsProps) {
               name="kmTravelled"
               type="number"
               min={0}
+              max={props.kmLimit}
               step="0.1"
               value={props.kmTravelled}
               onChange={(event) =>
@@ -176,70 +168,14 @@ export function OutstationFields(props: OutstationFieldsProps) {
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
+            {props.kmValidationMessage ? (
+              <p className="text-xs text-red-600 dark:text-red-300">
+                {props.kmValidationMessage}
+              </p>
+            ) : null}
           </label>
         </>
-      ) : (
-        <>
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-foreground/80">
-              Transport Type
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {props.transportTypeOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => props.onTransportTypeChange(option.id)}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
-                    props.transportType === option.id
-                      ? 'border-foreground bg-foreground text-background'
-                      : 'border-border bg-background'
-                  }`}
-                >
-                  {option.name}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="space-y-2 text-sm font-medium text-foreground/80">
-            <span className="inline-flex items-center gap-2">
-              <Receipt className="size-4" aria-hidden="true" />
-              Taxi Bill Amount
-            </span>
-            <input
-              name="taxiAmount"
-              type="number"
-              min={0}
-              step="0.01"
-              value={props.taxiAmount}
-              onChange={(event) => props.onTaxiAmountChange(event.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-          </label>
-        </>
-      )}
-
-      {/* Accommodation — available for all outstation claims */}
-      <label className="space-y-2 text-sm font-medium text-foreground/80">
-        <span className="inline-flex items-center gap-2">
-          <Bed className="size-4" aria-hidden="true" />
-          Accommodation Nights
-        </span>
-        <input
-          name="accommodationNights"
-          type="number"
-          min={0}
-          max={30}
-          step="1"
-          value={props.accommodationNights}
-          onChange={(event) =>
-            props.onAccommodationNightsChange(event.target.value)
-          }
-          placeholder="0"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-        />
-      </label>
+      ) : null}
 
       {/* Food with Principals — designation-restricted */}
       {props.showFoodWithPrincipals ? (

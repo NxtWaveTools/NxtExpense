@@ -10,7 +10,6 @@ import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import {
   getAllWorkLocations,
-  getAllTransportTypes,
   getAllCities,
   getVehicleTypesByDesignation,
   getExpenseRateByType,
@@ -26,21 +25,15 @@ export default async function NewClaimPage() {
   }
 
   // Fetch lookup data from DB
-  const [workLocations, transportTypes, allowedVehicles, cities] =
-    await Promise.all([
-      getAllWorkLocations(supabase),
-      getAllTransportTypes(supabase),
-      employee.designation_id
-        ? getVehicleTypesByDesignation(supabase, employee.designation_id)
-        : Promise.resolve([]),
-      getAllCities(supabase),
-    ])
+  const [workLocations, allowedVehicles, cities] = await Promise.all([
+    getAllWorkLocations(supabase),
+    employee.designation_id
+      ? getVehicleTypesByDesignation(supabase, employee.designation_id)
+      : Promise.resolve([]),
+    getAllCities(supabase),
+  ])
 
   const workLocationOptions = workLocations
-  const transportTypeOptions = transportTypes.map((tt) => ({
-    id: tt.id,
-    name: tt.transport_name,
-  }))
   const allowedVehicleTypes = allowedVehicles.map((vt) => ({
     id: vt.id,
     name: vt.vehicle_name,
@@ -55,36 +48,27 @@ export default async function NewClaimPage() {
     (wl) => wl.location_code === 'FIELD_OUTSTATION'
   )?.id
 
-  const [foodBaseRate, foodOutstationRate, accommodationRate, fwpRate] =
-    await Promise.all([
-      baseLocationId
-        ? getExpenseRateByType(supabase, baseLocationId, 'FOOD_BASE', null)
-        : Promise.resolve(null),
-      outstationLocationId
-        ? getExpenseRateByType(
-            supabase,
-            outstationLocationId,
-            'FOOD_OUTSTATION',
-            null
-          )
-        : Promise.resolve(null),
-      outstationLocationId && employee.designation_id
-        ? getExpenseRateByType(
-            supabase,
-            outstationLocationId,
-            'ACCOMMODATION',
-            employee.designation_id
-          )
-        : Promise.resolve(null),
-      outstationLocationId && employee.designation_id
-        ? getExpenseRateByType(
-            supabase,
-            outstationLocationId,
-            'FOOD_WITH_PRINCIPALS',
-            employee.designation_id
-          )
-        : Promise.resolve(null),
-    ])
+  const [foodBaseRate, foodOutstationRate, fwpRate] = await Promise.all([
+    baseLocationId
+      ? getExpenseRateByType(supabase, baseLocationId, 'FOOD_BASE', null)
+      : Promise.resolve(null),
+    outstationLocationId
+      ? getExpenseRateByType(
+          supabase,
+          outstationLocationId,
+          'FOOD_OUTSTATION',
+          null
+        )
+      : Promise.resolve(null),
+    outstationLocationId && employee.designation_id
+      ? getExpenseRateByType(
+          supabase,
+          outstationLocationId,
+          'FOOD_WITH_PRINCIPALS',
+          employee.designation_id
+        )
+      : Promise.resolve(null),
+  ])
 
   const claimRateSnapshot = {
     foodBaseDaily: foodBaseRate ? Number(foodBaseRate.rate_amount) : null,
@@ -97,9 +81,6 @@ export default async function NewClaimPage() {
     intercityPerKmByVehicle: Object.fromEntries(
       allowedVehicles.map((vt) => [vt.id, Number(vt.intercity_rate_per_km)])
     ) as Record<string, number>,
-    accommodationPerNight: accommodationRate
-      ? Number(accommodationRate.rate_amount)
-      : null,
     foodWithPrincipalsMax: fwpRate ? Number(fwpRate.rate_amount) : null,
   }
 
@@ -119,7 +100,6 @@ export default async function NewClaimPage() {
           <ClaimSubmissionForm
             allowedVehicleTypes={allowedVehicleTypes}
             workLocationOptions={workLocationOptions}
-            transportTypeOptions={transportTypeOptions}
             cityOptions={cityOptions}
             claimRateSnapshot={claimRateSnapshot}
             initialValues={null}

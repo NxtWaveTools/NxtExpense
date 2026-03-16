@@ -263,15 +263,16 @@ describe('submitClaimAction branch coverage', () => {
     expect(result.error).toBe(expected)
   })
 
-  it('should require transport type when own vehicle is not used', async () => {
+  it('should allow no-own-vehicle outstation claim without transport selection', async () => {
     const result = await submitClaimAction({
       ...OUTSTATION_TAXI_INPUT,
       transportType: '   ',
     })
 
-    expect(result.ok).toBe(false)
-    expect(result.error).toBe(
-      'Transport type is required when not using own vehicle.'
+    expect(result.ok).toBe(true)
+    expect(mocks.calculateOutstationTaxiItems).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ transportTypeName: 'Taxi' })
     )
   })
 
@@ -445,7 +446,7 @@ describe('submitClaimAction branch coverage', () => {
         fromCityId: 'city-a',
         toCityId: 'city-b',
         kmTravelled: 100,
-        accommodationNights: 1,
+        accommodationNights: null,
         foodWithPrincipalsAmount: 0,
       })
     )
@@ -483,7 +484,7 @@ describe('submitClaimAction branch coverage', () => {
         fromCityId: 'city-a',
         toCityId: 'city-b',
         kmTravelled: 100,
-        accommodationNights: 1,
+        accommodationNights: null,
         foodWithPrincipalsAmount: 0,
       })
     )

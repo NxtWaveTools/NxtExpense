@@ -4,7 +4,6 @@ import {
   getDesignationApprovalFlow,
   getApprovalRoutingForDesignation,
   getClaimStatusTransitions,
-  type ApprovalRouting,
   type DesignationApprovalFlow,
   type ClaimStatusTransition,
 } from '@/lib/services/config-service'

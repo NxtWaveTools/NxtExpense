@@ -300,11 +300,13 @@ export async function calculateOutstationTaxiItems(
   }
 
   // Taxi bill (user-submitted amount, no DB rate)
-  items.push({
-    expense_type: 'taxi_bill',
-    amount: input.taxiAmount,
-    description: `${input.transportTypeName} bill submitted for outstation travel`,
-  })
+  if (input.taxiAmount > 0) {
+    items.push({
+      expense_type: 'taxi_bill',
+      amount: input.taxiAmount,
+      description: `${input.transportTypeName} bill submitted for outstation travel`,
+    })
+  }
 
   // Accommodation (if nights > 0)
   if (

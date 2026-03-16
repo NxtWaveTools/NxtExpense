@@ -22,7 +22,9 @@ export class ApprovalsPage {
 
   // Navigate into the first pending claim's detail page
   get reviewFirstClaim() {
-    return this.page.getByRole('link', { name: /review/i }).first()
+    return this.page
+      .locator('table:first-of-type tbody tr a[href^="/approvals/"]')
+      .first()
   }
 
   // ── Approval actions ──────────────────────────────────────────────────
