@@ -67,11 +67,6 @@ export function ClaimSubmissionForm({
   const [kmTravelled, setKmTravelled] = useState(
     initialValues?.kmTravelled ? String(initialValues.kmTravelled) : ''
   )
-  const [foodWithPrincipalsAmount, setFoodWithPrincipalsAmount] = useState(
-    initialValues?.foodWithPrincipalsAmount
-      ? String(initialValues.foodWithPrincipalsAmount)
-      : ''
-  )
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -119,7 +114,7 @@ export function ClaimSubmissionForm({
         allowedVehicleTypes.find((v) => v.id === vehicleType)?.name ?? '',
       kmTravelled,
       taxiAmount: '',
-      foodWithPrincipalsAmount,
+      foodWithPrincipalsAmount: '',
       claimRateSnapshot,
     })
   }, [
@@ -128,7 +123,6 @@ export function ClaimSubmissionForm({
     ownVehicleUsed,
     kmTravelled,
     vehicleType,
-    foodWithPrincipalsAmount,
     allowedVehicleTypes,
     claimRateSnapshot,
   ])
@@ -142,10 +136,6 @@ export function ClaimSubmissionForm({
       setKmTravelled('')
     }
   }
-
-  const showFoodWithPrincipals =
-    claimRateSnapshot.foodWithPrincipalsMax !== null &&
-    claimRateSnapshot.foodWithPrincipalsMax > 0
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -167,7 +157,6 @@ export function ClaimSubmissionForm({
     setError(null)
 
     const kmTravelledValue = Number.parseFloat(kmTravelled)
-    const fwpAmountValue = Number.parseFloat(foodWithPrincipalsAmount)
     const requiresOutstationDetails =
       selectedLocation?.requires_outstation_details ?? false
     const requiresVehicleSelection =
@@ -190,13 +179,6 @@ export function ClaimSubmissionForm({
       kmTravelled:
         isOutstationOwnVehicle && Number.isFinite(kmTravelledValue)
           ? kmTravelledValue
-          : undefined,
-      foodWithPrincipalsAmount:
-        requiresOutstationDetails &&
-        showFoodWithPrincipals &&
-        Number.isFinite(fwpAmountValue) &&
-        fwpAmountValue > 0
-          ? fwpAmountValue
           : undefined,
     }
 
@@ -305,17 +287,14 @@ export function ClaimSubmissionForm({
             kmTravelled={kmTravelled}
             kmLimit={KM_UI_LIMIT}
             kmValidationMessage={kmValidationMessage}
-            foodWithPrincipalsAmount={foodWithPrincipalsAmount}
             allowedVehicleTypes={allowedVehicleTypes}
             cityOptions={cityOptions}
-            showFoodWithPrincipals={showFoodWithPrincipals}
             onOwnVehicleUsedChange={handleOwnVehicleUsedChange}
             onVehicleTypeChange={setVehicleType}
             onOutstationCityIdChange={setOutstationCityId}
             onFromCityIdChange={setFromCityId}
             onToCityIdChange={setToCityId}
             onKmTravelledChange={setKmTravelled}
-            onFoodWithPrincipalsAmountChange={setFoodWithPrincipalsAmount}
           />
         ) : null}
 

@@ -16,6 +16,7 @@ import {
   addApprovalFiltersToParams,
   normalizeApprovalHistoryFilters,
 } from '@/features/approvals/utils/history-filters'
+import { canViewApprovalHistoryAmount } from '@/features/approvals/utils/amount-visibility'
 import {
   buildPathWithSearchParams,
   createNonEmptySearchParams,
@@ -148,6 +149,10 @@ export default async function ApprovalsPage({
     getClaimStatusCatalog(supabase),
   ])
 
+  const showHistoryAmountColumn = canViewApprovalHistoryAmount(
+    employee.designations?.designation_name
+  )
+
   const pendingPagination = buildCursorNavigationLinks({
     pathname: '/approvals',
     query: paginationQuery,
@@ -203,6 +208,7 @@ export default async function ApprovalsPage({
             />
             <ApprovalHistoryList
               history={history}
+              showAmountColumn={showHistoryAmountColumn}
               pagination={historyPagination}
             />
           </div>

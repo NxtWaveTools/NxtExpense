@@ -1,4 +1,4 @@
-import { Car, MapPin, Route, Utensils } from 'lucide-react'
+import { Car, MapPin, Route } from 'lucide-react'
 
 import type { SelectOption, VehicleType } from '@/features/claims/types'
 
@@ -11,17 +11,14 @@ type OutstationFieldsProps = {
   kmTravelled: string
   kmLimit: number
   kmValidationMessage: string | null
-  foodWithPrincipalsAmount: string
   allowedVehicleTypes: readonly SelectOption[]
   cityOptions: readonly SelectOption[]
-  showFoodWithPrincipals: boolean
   onOwnVehicleUsedChange: (value: boolean) => void
   onVehicleTypeChange: (value: VehicleType) => void
   onOutstationCityIdChange: (value: string) => void
   onFromCityIdChange: (value: string) => void
   onToCityIdChange: (value: string) => void
   onKmTravelledChange: (value: string) => void
-  onFoodWithPrincipalsAmountChange: (value: string) => void
 }
 
 export function OutstationFields(props: OutstationFieldsProps) {
@@ -175,29 +172,6 @@ export function OutstationFields(props: OutstationFieldsProps) {
             ) : null}
           </label>
         </>
-      ) : null}
-
-      {/* Food with Principals — designation-restricted */}
-      {props.showFoodWithPrincipals ? (
-        <label className="space-y-2 text-sm font-medium text-foreground/80">
-          <span className="inline-flex items-center gap-2">
-            <Utensils className="size-4" aria-hidden="true" />
-            Food with Principals (max ₹500)
-          </span>
-          <input
-            name="foodWithPrincipalsAmount"
-            type="number"
-            min={0}
-            max={500}
-            step="0.01"
-            value={props.foodWithPrincipalsAmount}
-            onChange={(event) =>
-              props.onFoodWithPrincipalsAmountChange(event.target.value)
-            }
-            placeholder="0"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          />
-        </label>
       ) : null}
     </div>
   )

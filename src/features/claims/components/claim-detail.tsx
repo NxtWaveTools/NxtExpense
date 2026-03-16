@@ -1,5 +1,6 @@
 import { formatDate } from '@/lib/utils/date'
 
+import { SubmittedClaimDetails } from '@/features/claims/components/submitted-claim-details'
 import type { ClaimWithItems } from '@/features/claims/types'
 import type { EmployeeRow } from '@/lib/services/employee-service'
 
@@ -89,6 +90,8 @@ export function ClaimDetail({
           </div>
         )
       ) : null}
+
+      <SubmittedClaimDetails claim={claim} />
 
       <h3 className="mt-5 text-sm font-semibold uppercase tracking-[0.12em] text-foreground/70">
         Line Items

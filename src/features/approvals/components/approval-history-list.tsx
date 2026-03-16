@@ -12,6 +12,7 @@ type ApprovalHistoryPayload = Awaited<
 
 type ApprovalHistoryListProps = {
   history: ApprovalHistoryPayload
+  showAmountColumn: boolean
   pagination: {
     backHref: string | null
     nextHref: string | null
@@ -21,6 +22,7 @@ type ApprovalHistoryListProps = {
 
 export function ApprovalHistoryList({
   history,
+  showAmountColumn,
   pagination,
 }: ApprovalHistoryListProps) {
   if (history.data.length === 0) {
@@ -58,6 +60,9 @@ export function ApprovalHistoryList({
               <th className="px-3 py-2 font-medium">Employee</th>
               <th className="px-3 py-2 font-medium">Role</th>
               <th className="px-3 py-2 font-medium">Claim Date</th>
+              {showAmountColumn ? (
+                <th className="px-3 py-2 font-medium">Amount</th>
+              ) : null}
               <th className="px-3 py-2 font-medium">HOD Approved Date</th>
               <th className="px-3 py-2 font-medium">Finance Approved Date</th>
               <th className="px-3 py-2 font-medium">Current Status</th>
@@ -79,6 +84,11 @@ export function ApprovalHistoryList({
                   {row.ownerDesignation}
                 </td>
                 <td className="px-3 py-3">{formatDate(row.claimDate)}</td>
+                {showAmountColumn ? (
+                  <td className="px-3 py-3">
+                    Rs. {Number(row.totalAmount).toFixed(2)}
+                  </td>
+                ) : null}
                 <td className="px-3 py-3">
                   {row.hodApprovedAt ? formatDate(row.hodApprovedAt) : '-'}
                 </td>
