@@ -213,7 +213,7 @@ export function FinanceFiltersBar({
             className={inputCls}
           >
             <option value="claim_date">Claim Date</option>
-            <option value="finance_approved_date">Finance Approved Date</option>
+            <option value="finance_approved_date">Payment Issued Date</option>
           </select>
         </label>
 

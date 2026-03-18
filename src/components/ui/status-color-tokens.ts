@@ -1,4 +1,4 @@
-export const STATUS_PILL_STYLE_BY_TOKEN: Record<string, string> = {
+const STATUS_PILL_STYLE_BY_TOKEN: Record<string, string> = {
   gray: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/10 dark:text-zinc-400',
   blue: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
   yellow: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',

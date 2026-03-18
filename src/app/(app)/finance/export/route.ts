@@ -26,31 +26,6 @@ async function handleExportRequest(request: Request) {
     const mode = getExportMode(searchParams.get('mode'))
     const historyCursor = searchParams.get('historyCursor')
 
-    const legacyClaimDateFrom =
-      searchParams.get('claimDateFrom') ?? searchParams.get('claimDate')
-    const legacyClaimDateTo =
-      searchParams.get('claimDateTo') ?? searchParams.get('claimDate')
-    const legacyFinanceApprovedDateFrom = searchParams.get('actionDateFrom')
-    const legacyFinanceApprovedDateTo = searchParams.get('actionDateTo')
-
-    const dateFilterField =
-      searchParams.get('dateFilterField') ??
-      (legacyFinanceApprovedDateFrom || legacyFinanceApprovedDateTo
-        ? 'finance_approved_date'
-        : 'claim_date')
-
-    const dateFrom =
-      searchParams.get('dateFrom') ??
-      (dateFilterField === 'finance_approved_date'
-        ? legacyFinanceApprovedDateFrom
-        : legacyClaimDateFrom)
-
-    const dateTo =
-      searchParams.get('dateTo') ??
-      (dateFilterField === 'finance_approved_date'
-        ? legacyFinanceApprovedDateTo
-        : legacyClaimDateTo)
-
     const filters = normalizeFinanceFilters({
       employeeName: searchParams.get('employeeName') ?? undefined,
       claimNumber: searchParams.get('claimNumber') ?? undefined,
@@ -60,9 +35,9 @@ async function handleExportRequest(request: Request) {
       claimStatus: searchParams.get('claimStatus') ?? undefined,
       workLocation: searchParams.get('workLocation') ?? undefined,
       actionFilter: searchParams.get('actionFilter') ?? undefined,
-      dateFilterField,
-      dateFrom: dateFrom ?? undefined,
-      dateTo: dateTo ?? undefined,
+      dateFilterField: searchParams.get('dateFilterField') ?? undefined,
+      dateFrom: searchParams.get('dateFrom') ?? undefined,
+      dateTo: searchParams.get('dateTo') ?? undefined,
     })
 
     const supabase = await createSupabaseServerClient()

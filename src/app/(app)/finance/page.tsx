@@ -46,11 +46,6 @@ type FinancePageProps = {
     dateFilterField?: string
     dateFrom?: string
     dateTo?: string
-    claimDate?: string
-    claimDateFrom?: string
-    claimDateTo?: string
-    actionDateFrom?: string
-    actionDateTo?: string
   }>
 }
 
@@ -65,31 +60,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
   const resolvedSearch = await searchParams
 
-  const legacyClaimDateFrom =
-    resolvedSearch?.claimDateFrom ?? resolvedSearch?.claimDate
-  const legacyClaimDateTo =
-    resolvedSearch?.claimDateTo ?? resolvedSearch?.claimDate
-  const legacyFinanceApprovedDateFrom = resolvedSearch?.actionDateFrom
-  const legacyFinanceApprovedDateTo = resolvedSearch?.actionDateTo
-
-  const dateFilterField =
-    resolvedSearch?.dateFilterField ??
-    (legacyFinanceApprovedDateFrom || legacyFinanceApprovedDateTo
-      ? 'finance_approved_date'
-      : 'claim_date')
-
-  const dateFrom =
-    resolvedSearch?.dateFrom ??
-    (dateFilterField === 'finance_approved_date'
-      ? legacyFinanceApprovedDateFrom
-      : legacyClaimDateFrom)
-
-  const dateTo =
-    resolvedSearch?.dateTo ??
-    (dateFilterField === 'finance_approved_date'
-      ? legacyFinanceApprovedDateTo
-      : legacyClaimDateTo)
-
   const rawFilters = {
     employeeName: resolvedSearch?.employeeName,
     claimNumber: resolvedSearch?.claimNumber,
@@ -98,9 +68,9 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     claimStatus: resolvedSearch?.claimStatus,
     workLocation: resolvedSearch?.workLocation,
     actionFilter: resolvedSearch?.actionFilter,
-    dateFilterField,
-    dateFrom,
-    dateTo,
+    dateFilterField: resolvedSearch?.dateFilterField,
+    dateFrom: resolvedSearch?.dateFrom,
+    dateTo: resolvedSearch?.dateTo,
   }
 
   const normalizedFilters = (() => {
@@ -233,7 +203,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
                   tone: 'finance',
                 },
                 {
-                  label: 'Finance Approved',
+                  label: 'Payment Issued',
                   count: analytics.approved.count,
                   amount: analytics.approved.amount,
                   tone: 'approved',

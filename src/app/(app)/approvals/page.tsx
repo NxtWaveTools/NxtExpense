@@ -42,8 +42,6 @@ type ApprovalsPageProps = {
     claimStatus?: string
     employeeName?: string
     claimDate?: string
-    claimDateFrom?: string
-    claimDateTo?: string
     hodApprovedFrom?: string
     hodApprovedTo?: string
     financeApprovedFrom?: string
@@ -71,17 +69,10 @@ export default async function ApprovalsPage({
   }
 
   const resolvedSearch = await searchParams
-  const legacyClaimDate =
-    resolvedSearch?.claimDateFrom && resolvedSearch?.claimDateTo
-      ? resolvedSearch.claimDateFrom === resolvedSearch.claimDateTo
-        ? resolvedSearch.claimDateFrom
-        : undefined
-      : (resolvedSearch?.claimDateFrom ?? resolvedSearch?.claimDateTo)
-
   const rawFilters = {
     claimStatus: resolvedSearch?.claimStatus,
     employeeName: resolvedSearch?.employeeName,
-    claimDate: resolvedSearch?.claimDate ?? legacyClaimDate,
+    claimDate: resolvedSearch?.claimDate,
     hodApprovedFrom: resolvedSearch?.hodApprovedFrom,
     hodApprovedTo: resolvedSearch?.hodApprovedTo,
     financeApprovedFrom: resolvedSearch?.financeApprovedFrom,

@@ -38,14 +38,6 @@ export type PendingApproval = {
 
 export type PaginatedPendingApprovals = PaginatedResult<PendingApproval>
 
-export type ApprovalHistoryItem = {
-  claim: Claim
-  owner: EmployeeRow
-  action: ApprovalAction
-}
-
-export type PaginatedApprovalHistory = PaginatedResult<ApprovalHistoryItem>
-
 export type ApprovalActorFilter = 'all' | 'sbh' | 'hod' | 'finance'
 
 export type ApprovalHistoryFilters = {

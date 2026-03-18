@@ -140,8 +140,8 @@ async function runStandardFlowScenario(
   expect(financeResult).toEqual({ ok: true, error: null })
 
   expect(claim.statusCode).toBe('APPROVED')
-  expect(getClaimStatusDisplayLabel(claim.statusCode, 'Approved')).toBe(
-    'Finance Approved'
+  expect(getClaimStatusDisplayLabel(claim.statusCode, 'Payment Issued')).toBe(
+    'Payment Issued'
   )
   expect(claim.approvalHistory.map((entry) => entry.actorEmail)).toEqual([
     sbhEmail.toLowerCase(),

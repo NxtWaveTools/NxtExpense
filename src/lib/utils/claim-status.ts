@@ -10,10 +10,6 @@ export function getClaimStatusDisplayLabel(
   statusCode: string | null | undefined,
   statusName: string | null | undefined
 ): string {
-  if (statusCode === 'APPROVED' || statusName === 'Approved') {
-    return 'Finance Approved'
-  }
-
   if (statusName && statusName.trim()) {
     return statusName
   }

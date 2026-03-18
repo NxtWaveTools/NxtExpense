@@ -1,12 +1,5 @@
 import type { PaginatedResult } from '@/lib/utils/pagination'
-import type {
-  WorkLocation as ConfigWorkLocation,
-  VehicleType as ConfigVehicleType,
-  TransportType as ConfigTransportType,
-} from '@/lib/services/config-service'
-
-// Actor scope mirrors the `claim_actor_scope` PostgreSQL enum — DB is source of truth.
-export type ActorScope = 'employee' | 'approver' | 'finance' | 'admin'
+import type { WorkLocation as ConfigWorkLocation } from '@/lib/services/config-service'
 
 export type WorkLocation = string
 export type VehicleType = string
@@ -22,12 +15,6 @@ export type CityOption = SelectOption & { stateId: string }
 
 /** Full DB-backed work location object with behavioral flags */
 export type WorkLocationOption = ConfigWorkLocation
-
-/** Full DB-backed vehicle type with rates and limits */
-export type VehicleTypeOption = ConfigVehicleType
-
-/** Full DB-backed transport type */
-export type TransportTypeOption = ConfigTransportType
 
 export type Claim = {
   id: string

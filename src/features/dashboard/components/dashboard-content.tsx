@@ -219,7 +219,7 @@ export function DashboardContent({
                 tone: 'pending',
               },
               {
-                label: 'Finance Approved',
+                label: 'Payment Issued',
                 count: stats.approved.count,
                 amount: stats.approved.amount,
                 tone: 'approved',

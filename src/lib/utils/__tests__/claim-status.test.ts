@@ -6,16 +6,16 @@ import {
 } from '@/lib/utils/claim-status'
 
 describe('claim status helpers', () => {
-  it('uses finance-approved label when status code is APPROVED', () => {
-    expect(getClaimStatusDisplayLabel('APPROVED', 'Approved')).toBe(
-      'Finance Approved'
+  it('returns provided status name for approved status code', () => {
+    expect(getClaimStatusDisplayLabel('APPROVED', 'Payment Issued')).toBe(
+      'Payment Issued'
     )
   })
 
-  it('uses finance-approved label when status name is Approved', () => {
+  it('returns status name without remapping legacy labels', () => {
     expect(
       getClaimStatusDisplayLabel('L3_PENDING_FINANCE_REVIEW', 'Approved')
-    ).toBe('Finance Approved')
+    ).toBe('Approved')
   })
 
   it('returns status name when non-empty', () => {

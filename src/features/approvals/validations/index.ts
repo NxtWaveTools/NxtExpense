@@ -51,8 +51,6 @@ export const approvalActionSchema = z
     }
   })
 
-export type ApprovalActionInput = z.infer<typeof approvalActionSchema>
-
 export const approvalHistoryFiltersSchema = z
   .object({
     employeeName: z.string().trim().max(100).optional(),
@@ -121,9 +119,3 @@ export const bulkApprovalActionSchema = z
       })
     }
   })
-
-export type ApprovalHistoryFiltersInput = z.infer<
-  typeof approvalHistoryFiltersSchema
->
-
-export type BulkApprovalActionInput = z.infer<typeof bulkApprovalActionSchema>

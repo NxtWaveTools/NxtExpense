@@ -75,6 +75,3 @@ export const myClaimsFiltersSchema = z.object({
   ),
   claimDate: optionalDateField('Claim date'),
 })
-
-export type ClaimSubmissionInput = z.infer<typeof claimSubmissionSchema>
-export type MyClaimsFiltersInput = z.infer<typeof myClaimsFiltersSchema>

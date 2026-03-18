@@ -138,7 +138,7 @@ export function buildApprovalHistoryCsv(rows: ApprovalHistoryRecord[]): string {
     'Actor Email',
     'Actor Designation',
     'HOD Approved Date',
-    'Finance Approved Date',
+    'Payment Issued Date',
     'Current Status',
   ]
 

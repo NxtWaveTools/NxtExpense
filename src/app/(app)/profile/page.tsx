@@ -128,7 +128,7 @@ export default async function ProfilePage() {
           iconColor: 'text-amber-600',
         },
         {
-          label: 'Finance Approved',
+          label: 'Payment Issued',
           value: stats.approved,
           color: 'text-emerald-600 dark:text-emerald-400',
           bgIcon: 'bg-emerald-500/10',

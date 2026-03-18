@@ -150,8 +150,8 @@ async function runDirectFlowScenario(
   const financeResult = await financeApproveClaim(claim.id, financeEmail)
   expect(financeResult).toEqual({ ok: true, error: null })
   expect(claim.statusCode).toBe('APPROVED')
-  expect(getClaimStatusDisplayLabel(claim.statusCode, 'Approved')).toBe(
-    'Finance Approved'
+  expect(getClaimStatusDisplayLabel(claim.statusCode, 'Payment Issued')).toBe(
+    'Payment Issued'
   )
 
   return claim

@@ -64,38 +64,6 @@ export async function insertClaim(
   return data as { id: string; claim_number: string }
 }
 
-export async function updateClaimDraftData(
-  supabase: SupabaseClient,
-  claimId: string,
-  input: Omit<ClaimPayload, 'employeeId'>
-): Promise<void> {
-  const { error } = await supabase
-    .from('expense_claims')
-    .update({
-      claim_date: input.claimDateIso,
-      work_location_id: input.workLocationId,
-      own_vehicle_used: input.ownVehicleUsed,
-      vehicle_type_id: input.vehicleTypeId,
-      outstation_state_id: input.outstationStateId,
-      outstation_city_id: input.outstationCityId,
-      from_city_id: input.fromCityId,
-      to_city_id: input.toCityId,
-      km_travelled: input.kmTravelled,
-      total_amount: input.totalAmount,
-      status_id: input.statusId,
-      current_approval_level: input.currentApprovalLevel,
-      submitted_at: input.submittedAt,
-      designation_id: input.designationId,
-      accommodation_nights: input.accommodationNights,
-      food_with_principals_amount: input.foodWithPrincipalsAmount,
-    })
-    .eq('id', claimId)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-}
-
 export async function insertClaimItems(
   supabase: SupabaseClient,
   items: InsertClaimItemInput[]
@@ -116,23 +84,6 @@ export async function insertClaimItems(
   if (error) {
     throw new Error(error.message)
   }
-}
-
-export async function replaceClaimItems(
-  supabase: SupabaseClient,
-  claimId: string,
-  items: InsertClaimItemInput[]
-): Promise<void> {
-  const { error: deleteError } = await supabase
-    .from('expense_claim_items')
-    .delete()
-    .eq('claim_id', claimId)
-
-  if (deleteError) {
-    throw new Error(deleteError.message)
-  }
-
-  await insertClaimItems(supabase, items)
 }
 
 export async function getClaimForDate(

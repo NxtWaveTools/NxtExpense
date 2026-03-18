@@ -22,7 +22,7 @@ const DEFAULT_FINANCE_FILTERS: FinanceFilters = {
   dateTo: null,
 }
 
-export type FinanceQueueAnalytics = {
+type FinanceQueueAnalytics = {
   total: ClaimMetricSummary
   pendingFinanceQueue: ClaimMetricSummary
   approved: ClaimMetricSummary

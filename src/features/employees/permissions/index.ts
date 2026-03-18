@@ -1,36 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { EmployeeRow } from '@/lib/services/employee-service'
-import {
-  getEmployeeRoles,
-  canUseVehicleType,
-} from '@/lib/services/employee-service'
+import { getEmployeeRoles } from '@/lib/services/employee-service'
 import {
   getDashboardAccessFromRoles,
   canAccessEmployeeClaimsFromRoles,
 } from '@/lib/services/approval-service'
-import { getVehicleTypesByDesignation } from '@/lib/services/config-service'
 
 type DashboardAccess = {
   canCreateClaims: boolean
   canViewClaims: boolean
   canViewApprovals: boolean
   canViewFinanceQueue: boolean
-}
-
-export async function canSubmitFourWheelerClaim(
-  supabase: SupabaseClient,
-  employee: EmployeeRow
-): Promise<boolean> {
-  if (!employee.designation_id) return false
-  return canUseVehicleType(supabase, employee.id, 'FOUR_WHEELER')
-}
-
-export async function getAllowedVehicleTypes(
-  supabase: SupabaseClient,
-  designationId: string
-): Promise<Array<{ id: string; vehicle_code: string; vehicle_name: string }>> {
-  return getVehicleTypesByDesignation(supabase, designationId)
 }
 
 export async function getDashboardAccess(

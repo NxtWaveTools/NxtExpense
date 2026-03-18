@@ -114,7 +114,3 @@ export const financeFiltersSchema = z
       })
     }
   })
-
-export type FinanceActionInput = z.infer<typeof financeActionSchema>
-export type BulkFinanceActionInput = z.infer<typeof bulkFinanceActionSchema>
-export type FinanceFiltersInput = z.infer<typeof financeFiltersSchema>

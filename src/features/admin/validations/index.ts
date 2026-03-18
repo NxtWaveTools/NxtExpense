@@ -45,13 +45,3 @@ export const adminUpdateVehicleRatesSchema = z.object({
   intercityRatePerKm: z.number().min(0, 'Rate must be non-negative.'),
   maxKmRoundTrip: z.number().int().min(0, 'KM limit must be non-negative.'),
 })
-
-export type AdminRollbackInput = z.infer<typeof adminRollbackSchema>
-export type AdminReassignApproverInput = z.infer<
-  typeof adminReassignApproverSchema
->
-export type AdminToggleActiveInput = z.infer<typeof adminToggleActiveSchema>
-export type AdminUpdateRateInput = z.infer<typeof adminUpdateRateSchema>
-export type AdminUpdateVehicleRatesInput = z.infer<
-  typeof adminUpdateVehicleRatesSchema
->

@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
   getExpenseRateByType,
-  type ExpenseRate,
   type VehicleType,
 } from '@/lib/services/config-service'
 
@@ -11,20 +10,20 @@ import {
 // ────────────────────────────────────────────────────────────
 
 /** Shape of a single expense line item produced by calculation */
-export type CalculatedExpenseItem = {
+type CalculatedExpenseItem = {
   expense_type: string
   amount: number
   description: string
 }
 
 /** Input for a base-location day calculation */
-export type BaseLocationInput = {
+type BaseLocationInput = {
   workLocationId: string
   vehicleType: VehicleType
 }
 
 /** Input for an outstation day calculation — own vehicle */
-export type OutstationOwnVehicleInput = {
+type OutstationOwnVehicleInput = {
   workLocationId: string
   designationId: string
   vehicleType: VehicleType
@@ -34,7 +33,7 @@ export type OutstationOwnVehicleInput = {
 }
 
 /** Input for an outstation day calculation — taxi/transport */
-export type OutstationTaxiInput = {
+type OutstationTaxiInput = {
   workLocationId: string
   taxiAmount: number
   transportTypeName: string
@@ -44,7 +43,7 @@ export type OutstationTaxiInput = {
 }
 
 /** Input for accommodation rate lookup */
-export type AccommodationInput = {
+type AccommodationInput = {
   workLocationId: string
   designationId: string
 }
@@ -70,41 +69,12 @@ export async function getVehicleTypeById(
   return data as VehicleType
 }
 
-/** Check if km exceeds the round-trip limit for the vehicle type */
-export function isKmWithinLimit(
-  vehicleType: VehicleType,
-  kmTravelled: number
-): { valid: boolean; maxKm: number } {
-  return {
-    valid: kmTravelled <= vehicleType.max_km_round_trip,
-    maxKm: vehicleType.max_km_round_trip,
-  }
-}
-
 // ────────────────────────────────────────────────────────────
 // Rate lookups (all from DB — zero hardcoded values)
 // ────────────────────────────────────────────────────────────
 
-/** Get food rate for a work location (designation-independent) */
-export async function getFoodRate(
-  supabase: SupabaseClient,
-  workLocationId: string
-): Promise<ExpenseRate | null> {
-  // Food rates: FOOD_BASE for base location, FOOD_OUTSTATION for outstation
-  // These are not designation-specific — designation_id is null
-  const base = await getExpenseRateByType(
-    supabase,
-    workLocationId,
-    'FOOD_BASE',
-    null
-  )
-  if (base) return base
-
-  return getExpenseRateByType(supabase, workLocationId, 'FOOD_OUTSTATION', null)
-}
-
 /** Get accommodation limit for a designation at a given work location */
-export async function getAccommodationLimit(
+async function getAccommodationLimit(
   supabase: SupabaseClient,
   input: AccommodationInput
 ): Promise<number> {
