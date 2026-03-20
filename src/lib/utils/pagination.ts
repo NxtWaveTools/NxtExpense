@@ -1,4 +1,4 @@
-export type CursorPayload = {
+type CursorPayload = {
   created_at: string
   id: string
 }
@@ -111,7 +111,7 @@ function buildHref(pathname: string, params: URLSearchParams): string {
   return queryString ? `${pathname}?${queryString}` : pathname
 }
 
-export type CursorNavigationLinks = {
+type CursorNavigationLinks = {
   backHref: string | null
   nextHref: string | null
   pageNumber: number

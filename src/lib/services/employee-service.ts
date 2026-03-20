@@ -32,13 +32,6 @@ export type EmployeeRole = {
   role_name: string
 }
 
-export type EmployeeState = {
-  state_id: string
-  state_code: string
-  state_name: string
-  is_primary: boolean
-}
-
 // ────────────────────────────────────────────────────────────
 // Column selection
 // ────────────────────────────────────────────────────────────
@@ -170,83 +163,6 @@ export async function getEmployeeRoles(
   })
 }
 
-export async function hasRole(
-  supabase: SupabaseClient,
-  employeeId: string,
-  roleCode: string
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('employee_roles')
-    .select('id, roles!inner(role_code)')
-    .eq('employee_id', employeeId)
-    .eq('is_active', true)
-    .eq('roles.role_code', roleCode)
-    .limit(1)
-
-  if (error) throw new Error(`Failed to check role: ${error.message}`)
-  return (data?.length ?? 0) > 0
-}
-
-// ────────────────────────────────────────────────────────────
-// States (via employee_states junction)
-// ────────────────────────────────────────────────────────────
-
-export async function getEmployeeStates(
-  supabase: SupabaseClient,
-  employeeId: string
-): Promise<EmployeeState[]> {
-  const { data, error } = await supabase
-    .from('employee_states')
-    .select('state_id, is_primary, states(id, state_code, state_name)')
-    .eq('employee_id', employeeId)
-
-  if (error)
-    throw new Error(`Failed to fetch employee states: ${error.message}`)
-
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const state = row.states as {
-      id: string
-      state_code: string
-      state_name: string
-    }
-    return {
-      state_id: state.id,
-      state_code: state.state_code,
-      state_name: state.state_name,
-      is_primary: row.is_primary as boolean,
-    }
-  })
-}
-
-export async function getEmployeePrimaryState(
-  supabase: SupabaseClient,
-  employeeId: string
-): Promise<EmployeeState | null> {
-  const states = await getEmployeeStates(supabase, employeeId)
-  return states.find((s) => s.is_primary) ?? states[0] ?? null
-}
-
-// ────────────────────────────────────────────────────────────
-// Vehicle permissions (via designation_vehicle_permissions)
-// ────────────────────────────────────────────────────────────
-
-export async function canUseVehicleType(
-  supabase: SupabaseClient,
-  designationId: string,
-  vehicleTypeId: string
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('designation_vehicle_permissions')
-    .select('id')
-    .eq('designation_id', designationId)
-    .eq('vehicle_type_id', vehicleTypeId)
-    .limit(1)
-
-  if (error)
-    throw new Error(`Failed to check vehicle permission: ${error.message}`)
-  return (data?.length ?? 0) > 0
-}
-
 // ────────────────────────────────────────────────────────────
 // Approver assignments (checks approval_routing + employee_roles)
 // ────────────────────────────────────────────────────────────
@@ -285,12 +201,4 @@ export async function hasApproverAssignments(
   if (level3.error) throw new Error(level3.error.message)
 
   return (level1.data?.length ?? 0) > 0 || (level3.data?.length ?? 0) > 0
-}
-
-export function getEmployeeApprovalChain(employee: EmployeeRow) {
-  return {
-    level1: employee.approval_employee_id_level_1,
-    level2: employee.approval_employee_id_level_2,
-    level3: employee.approval_employee_id_level_3,
-  }
 }

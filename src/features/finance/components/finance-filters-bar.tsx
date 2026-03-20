@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Filter, Download } from 'lucide-react'
 
 import type {
-  FinanceActionFilter,
   FinanceDateFilterField,
   FinanceFilterOptions,
   FinanceFilters,
@@ -36,9 +36,7 @@ export function FinanceFiltersBar({
   )
   const [claimStatus, setClaimStatus] = useState(filters.claimStatus ?? '')
   const [workLocation, setWorkLocation] = useState(filters.workLocation ?? '')
-  const [actionFilter, setActionFilter] = useState<FinanceActionFilter>(
-    filters.actionFilter
-  )
+  const [actionFilter, setActionFilter] = useState(filters.actionFilter ?? '')
   const [dateFilterField, setDateFilterField] =
     useState<FinanceDateFilterField>(filters.dateFilterField)
   const [dateFrom, setDateFrom] = useState(filters.dateFrom ?? '')
@@ -54,7 +52,7 @@ export function FinanceFiltersBar({
       params.set('hodApproverEmployeeId', hodApproverEmployeeId)
     if (claimStatus) params.set('claimStatus', claimStatus)
     if (workLocation) params.set('workLocation', workLocation)
-    if (actionFilter !== 'all') {
+    if (actionFilter) {
       params.set('actionFilter', actionFilter)
     }
     if (dateFilterField !== 'claim_date') {
@@ -73,47 +71,57 @@ export function FinanceFiltersBar({
     setHodApproverEmployeeId('')
     setClaimStatus('')
     setWorkLocation('')
-    setActionFilter('all')
+    setActionFilter('')
     setDateFilterField('claim_date')
     setDateFrom('')
     setDateTo('')
     router.push('/finance')
   }
 
-  return (
-    <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-      <h2 className="text-base font-semibold">Finance Filters</h2>
+  const inputCls =
+    'h-10 w-full rounded-md border border-border bg-background px-3 text-sm transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none'
 
-      <form onSubmit={handleSubmit} className="mt-4 grid gap-3 md:grid-cols-4">
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Employee Name</span>
+  return (
+    <section className="rounded-lg border border-border bg-surface p-6">
+      <h2 className="flex items-center gap-2.5 text-base font-semibold">
+        <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
+          <Filter className="size-3.5 text-primary" />
+        </div>
+        Finance Filters
+      </h2>
+
+      <form onSubmit={handleSubmit} className="mt-5 grid gap-4 md:grid-cols-4">
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">Employee Name</span>
           <input
             name="employeeName"
             value={employeeName}
             onChange={(e) => setEmployeeName(e.target.value)}
             placeholder="Search by employee name"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={`${inputCls} placeholder:text-muted-foreground`}
           />
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Claim Number</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">Claim Number</span>
           <input
             name="claimNumber"
             value={claimNumber}
             onChange={(e) => setClaimNumber(e.target.value)}
             placeholder="Search by claim ID"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={`${inputCls} placeholder:text-muted-foreground`}
           />
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Employee Designation</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">
+            Employee Designation
+          </span>
           <select
             name="ownerDesignation"
             value={ownerDesignation}
             onChange={(e) => setOwnerDesignation(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           >
             <option value="">All Designations</option>
             {options.ownerDesignations.map((option) => (
@@ -124,13 +132,13 @@ export function FinanceFiltersBar({
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">HOD Approver</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">HOD Approver</span>
           <select
             name="hodApproverEmployeeId"
             value={hodApproverEmployeeId}
             onChange={(e) => setHodApproverEmployeeId(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           >
             <option value="">All HOD Approvers</option>
             {options.hodApprovers.map((option) => (
@@ -141,13 +149,13 @@ export function FinanceFiltersBar({
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Claim Status</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">Claim Status</span>
           <select
             name="claimStatus"
             value={claimStatus}
             onChange={(e) => setClaimStatus(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           >
             <option value="">All Statuses</option>
             {options.claimStatuses.map((option) => (
@@ -158,13 +166,13 @@ export function FinanceFiltersBar({
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Location</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">Location</span>
           <select
             name="workLocation"
             value={workLocation}
             onChange={(e) => setWorkLocation(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           >
             <option value="">All Locations</option>
             {options.workLocations.map((option) => (
@@ -175,85 +183,90 @@ export function FinanceFiltersBar({
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Finance Action</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">Finance Action</span>
           <select
             name="actionFilter"
             value={actionFilter}
-            onChange={(e) =>
-              setActionFilter(e.target.value as FinanceActionFilter)
-            }
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            onChange={(e) => setActionFilter(e.target.value)}
+            className={inputCls}
           >
-            <option value="all">All Actions</option>
-            <option value="issued">Issued</option>
-            <option value="finance_rejected">Finance Rejected</option>
+            <option value="">All Actions</option>
+            {options.financeActions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">Date Filter</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">Date Filter</span>
           <select
             name="dateFilterField"
             value={dateFilterField}
             onChange={(e) =>
               setDateFilterField(e.target.value as FinanceDateFilterField)
             }
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           >
             <option value="claim_date">Claim Date</option>
-            <option value="finance_approved_date">Finance Approved Date</option>
+            <option value="finance_approved_date">Payment Issued Date</option>
           </select>
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">From</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">From</span>
           <input
             name="dateFrom"
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           />
         </label>
 
-        <label className="space-y-1 text-sm">
-          <span className="text-foreground/80">To</span>
+        <label className="space-y-1.5 text-sm">
+          <span className="font-medium text-foreground">To</span>
           <input
             name="dateTo"
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2"
+            className={inputCls}
           />
         </label>
 
-        <div className="md:col-span-4 flex flex-wrap items-center gap-2 pt-1">
+        <div className="md:col-span-4 flex flex-wrap items-center gap-2 pt-2">
           <button
             type="submit"
-            className="rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-md"
           >
             Apply Filters
           </button>
           <button
             type="button"
             onClick={handleClear}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+            className="rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-medium shadow-xs transition-all hover:bg-muted"
           >
             Clear Filters
           </button>
-          <Link
-            href={exportCurrentPageHref}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
-          >
-            Download Current Page CSV
-          </Link>
-          <Link
-            href={exportAllHref}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
-          >
-            Download All Filtered CSV
-          </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href={exportCurrentPageHref}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-2.5 text-xs font-medium shadow-xs transition-all hover:bg-muted"
+            >
+              <Download className="size-3.5" />
+              Page CSV
+            </Link>
+            <Link
+              href={exportAllHref}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-2.5 text-xs font-medium shadow-xs transition-all hover:bg-muted"
+            >
+              <Download className="size-3.5" />
+              All CSV
+            </Link>
+          </div>
         </div>
       </form>
     </section>

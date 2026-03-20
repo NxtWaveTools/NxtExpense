@@ -1,11 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import { getIntracityAllowanceRateTypeByVehicleCode } from '@/lib/constants/claim-expense'
+
 // ────────────────────────────────────────────────────────────
 // Shared ID-based types for the entire application
 // All lookup table row shapes live here — features import from this file
 // ────────────────────────────────────────────────────────────
 
-export type Designation = {
+type Designation = {
   id: string
   designation_code: string
   designation_name: string
@@ -14,14 +16,14 @@ export type Designation = {
   is_active: boolean
 }
 
-export type State = {
+type State = {
   id: string
   state_code: string
   state_name: string
   is_active: boolean
 }
 
-export type City = {
+type City = {
   id: string
   city_name: string
   state_id: string
@@ -49,15 +51,7 @@ export type VehicleType = {
   is_active: boolean
 }
 
-export type TransportType = {
-  id: string
-  transport_code: string
-  transport_name: string
-  display_order: number
-  is_active: boolean
-}
-
-export type ClaimStatus = {
+type ClaimStatus = {
   id: string
   status_code: string
   status_name: string
@@ -72,15 +66,7 @@ export type ClaimStatus = {
   is_active: boolean
 }
 
-export type ClaimStatusTransition = {
-  id: string
-  from_status_id: string
-  to_status_id: string
-  required_role_id: string | null
-  auto_transition: boolean
-}
-
-export type ExpenseRate = {
+type ExpenseRate = {
   id: string
   designation_id: string | null
   location_id: string
@@ -88,43 +74,6 @@ export type ExpenseRate = {
   rate_amount: number
   effective_from: string
   effective_to: string | null
-  is_active: boolean
-}
-
-export type ValidationRule = {
-  id: string
-  rule_code: string
-  rule_value: string
-  description: string | null
-}
-
-export type SystemSetting = {
-  id: string
-  setting_key: string
-  setting_value: string
-  description: string | null
-}
-
-export type AllowedEmailDomain = {
-  id: string
-  domain_name: string
-  is_active: boolean
-}
-
-export type DesignationVehiclePermission = {
-  id: string
-  designation_id: string
-  vehicle_type_id: string
-}
-
-export type ApprovalRouting = {
-  id: string
-  submitter_designation_id: string
-  submitter_state_id: string | null
-  approval_level: number
-  approver_role_id: string
-  approver_designation_id: string | null
-  approver_state_id: string | null
   is_active: boolean
 }
 
@@ -154,24 +103,6 @@ export async function getAllDesignations(
   return data as Designation[]
 }
 
-export async function getDesignationByCode(
-  supabase: SupabaseClient,
-  code: string
-): Promise<Designation | null> {
-  const { data, error } = await supabase
-    .from('designations')
-    .select(
-      'id, designation_code, designation_name, designation_abbreviation, hierarchy_level, is_active'
-    )
-    .eq('designation_code', code)
-    .eq('is_active', true)
-    .maybeSingle()
-
-  if (error)
-    throw new Error(`Failed to fetch designation by code: ${error.message}`)
-  return data as Designation | null
-}
-
 export async function getAllStates(supabase: SupabaseClient): Promise<State[]> {
   const { data, error } = await supabase
     .from('states')
@@ -181,20 +112,6 @@ export async function getAllStates(supabase: SupabaseClient): Promise<State[]> {
 
   if (error) throw new Error(`Failed to fetch states: ${error.message}`)
   return data as State[]
-}
-
-export async function getCitiesByState(
-  supabase: SupabaseClient,
-  stateId: string
-): Promise<City[]> {
-  const { data, error } = await supabase
-    .from('cities')
-    .select('id, city_name, state_id')
-    .eq('state_id', stateId)
-    .order('city_name')
-
-  if (error) throw new Error(`Failed to fetch cities: ${error.message}`)
-  return data as City[]
 }
 
 export async function getAllCities(supabase: SupabaseClient): Promise<City[]> {
@@ -257,20 +174,6 @@ export async function getVehicleTypesByDesignation(
     .filter(Boolean)
 }
 
-export async function getAllTransportTypes(
-  supabase: SupabaseClient
-): Promise<TransportType[]> {
-  const { data, error } = await supabase
-    .from('transport_types')
-    .select('id, transport_code, transport_name, display_order, is_active')
-    .eq('is_active', true)
-    .order('display_order')
-
-  if (error)
-    throw new Error(`Failed to fetch transport types: ${error.message}`)
-  return data as TransportType[]
-}
-
 const CLAIM_STATUS_COLUMNS =
   'id, status_code, status_name, approval_level, is_approval, is_rejection, is_terminal, is_payment_issued, requires_comment, display_color, display_order, is_active'
 
@@ -286,48 +189,8 @@ export async function getAllClaimStatuses(
   return data as ClaimStatus[]
 }
 
-export async function getClaimStatusByCode(
-  supabase: SupabaseClient,
-  statusCode: string
-): Promise<ClaimStatus> {
-  const { data, error } = await supabase
-    .from('claim_statuses')
-    .select(CLAIM_STATUS_COLUMNS)
-    .ilike('status_code', statusCode)
-    .single()
-
-  if (error)
-    throw new Error(
-      `Failed to fetch claim status '${statusCode}': ${error.message}`
-    )
-  return data as ClaimStatus
-}
-
 const EXPENSE_RATE_COLUMNS =
   'id, designation_id, location_id, expense_type, rate_amount, effective_from, effective_to, is_active'
-
-export async function getExpenseRates(
-  supabase: SupabaseClient,
-  locationId: string,
-  designationId?: string | null
-): Promise<ExpenseRate[]> {
-  let query = supabase
-    .from('expense_rates')
-    .select(EXPENSE_RATE_COLUMNS)
-    .eq('location_id', locationId)
-    .eq('is_active', true)
-
-  if (designationId) {
-    query = query.eq('designation_id', designationId)
-  } else {
-    query = query.is('designation_id', null)
-  }
-
-  const { data, error } = await query
-
-  if (error) throw new Error(`Failed to fetch expense rates: ${error.message}`)
-  return data as ExpenseRate[]
-}
 
 export async function getExpenseRateByType(
   supabase: SupabaseClient,
@@ -354,46 +217,25 @@ export async function getExpenseRateByType(
   return data as ExpenseRate | null
 }
 
-export async function getValidationRules(
-  supabase: SupabaseClient
-): Promise<ValidationRule[]> {
-  const { data, error } = await supabase
-    .from('validation_rules')
-    .select('id, rule_code, rule_value, description')
-
-  if (error)
-    throw new Error(`Failed to fetch validation rules: ${error.message}`)
-  return data as ValidationRule[]
-}
-
-export async function getValidationRule(
+export async function getIntracityAllowanceRateByVehicle(
   supabase: SupabaseClient,
-  ruleCode: string
-): Promise<string> {
-  const { data, error } = await supabase
-    .from('validation_rules')
-    .select('rule_value')
-    .eq('rule_code', ruleCode)
-    .single()
+  workLocationId: string,
+  vehicleCode: string
+): Promise<number> {
+  const expenseType = getIntracityAllowanceRateTypeByVehicleCode(vehicleCode)
 
-  if (error)
-    throw new Error(`Failed to fetch rule '${ruleCode}': ${error.message}`)
-  return (data as { rule_value: string }).rule_value
-}
+  if (!expenseType) {
+    return 0
+  }
 
-export async function getSystemSetting(
-  supabase: SupabaseClient,
-  settingKey: string
-): Promise<string> {
-  const { data, error } = await supabase
-    .from('system_settings')
-    .select('setting_value')
-    .eq('setting_key', settingKey)
-    .single()
+  const rate = await getExpenseRateByType(
+    supabase,
+    workLocationId,
+    expenseType,
+    null
+  )
 
-  if (error)
-    throw new Error(`Failed to fetch setting '${settingKey}': ${error.message}`)
-  return (data as { setting_value: string }).setting_value
+  return rate ? Number(rate.rate_amount) : 0
 }
 
 export async function getAllowedEmailDomains(
@@ -422,76 +264,4 @@ export async function getDesignationApprovalFlow(
 
   if (error) throw new Error(`Failed to fetch approval flow: ${error.message}`)
   return data as DesignationApprovalFlow
-}
-
-const APPROVAL_ROUTING_COLUMNS =
-  'id, submitter_designation_id, submitter_state_id, approval_level, approver_role_id, approver_designation_id, approver_state_id, is_active'
-
-export async function getApprovalRouting(
-  supabase: SupabaseClient,
-  designationId: string,
-  stateId: string | null,
-  approvalLevel: number
-): Promise<ApprovalRouting | null> {
-  let query = supabase
-    .from('approval_routing')
-    .select(APPROVAL_ROUTING_COLUMNS)
-    .eq('submitter_designation_id', designationId)
-    .eq('approval_level', approvalLevel)
-    .eq('is_active', true)
-
-  if (stateId) {
-    query = query.eq('submitter_state_id', stateId)
-  } else {
-    query = query.is('submitter_state_id', null)
-  }
-
-  const { data, error } = await query.maybeSingle()
-
-  if (error)
-    throw new Error(`Failed to fetch approval routing: ${error.message}`)
-  return data as ApprovalRouting | null
-}
-
-/** Get all approval routing entries for a submitter designation */
-export async function getApprovalRoutingForDesignation(
-  supabase: SupabaseClient,
-  designationId: string,
-  stateId?: string | null
-): Promise<ApprovalRouting[]> {
-  let query = supabase
-    .from('approval_routing')
-    .select(APPROVAL_ROUTING_COLUMNS)
-    .eq('submitter_designation_id', designationId)
-    .eq('is_active', true)
-    .order('approval_level')
-
-  if (stateId) {
-    // Fetch state-specific + state-null entries
-    query = query.or(
-      `submitter_state_id.eq.${stateId},submitter_state_id.is.null`
-    )
-  }
-
-  const { data, error } = await query
-
-  if (error)
-    throw new Error(`Failed to fetch approval routing: ${error.message}`)
-  return data as ApprovalRouting[]
-}
-
-export async function getClaimStatusTransitions(
-  supabase: SupabaseClient,
-  fromStatusId: string
-): Promise<ClaimStatusTransition[]> {
-  const { data, error } = await supabase
-    .from('claim_status_transitions')
-    .select(
-      'id, from_status_id, to_status_id, required_role_id, auto_transition'
-    )
-    .eq('from_status_id', fromStatusId)
-
-  if (error)
-    throw new Error(`Failed to fetch status transitions: ${error.message}`)
-  return data as ClaimStatusTransition[]
 }

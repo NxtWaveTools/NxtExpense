@@ -10,20 +10,28 @@ test.describe('Authorization Boundaries', () => {
   test('unauthenticated user is redirected to /login from protected routes', async ({
     page,
   }) => {
+    await page.context().clearCookies()
+    await page.goto('/login')
+    await page.evaluate(() => {
+      window.localStorage.clear()
+      window.sessionStorage.clear()
+    })
+    await page.context().clearCookies()
+
     await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
+    await page.waitForURL(/\/login/, { timeout: 20_000 })
     expect(page.url()).toContain('/login')
 
     await page.goto('/claims')
-    await page.waitForLoadState('networkidle')
+    await page.waitForURL(/\/login/, { timeout: 20_000 })
     expect(page.url()).toContain('/login')
 
     await page.goto('/approvals')
-    await page.waitForLoadState('networkidle')
+    await page.waitForURL(/\/login/, { timeout: 20_000 })
     expect(page.url()).toContain('/login')
 
     await page.goto('/finance')
-    await page.waitForLoadState('networkidle')
+    await page.waitForURL(/\/login/, { timeout: 20_000 })
     expect(page.url()).toContain('/login')
   })
 

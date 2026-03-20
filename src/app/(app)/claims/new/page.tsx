@@ -14,6 +14,7 @@ import {
   getAllCities,
   getVehicleTypesByDesignation,
   getExpenseRateByType,
+  getIntracityAllowanceRateByVehicle,
 } from '@/lib/services/config-service'
 
 export default async function NewClaimPage() {
@@ -41,10 +42,10 @@ export default async function NewClaimPage() {
     name: vt.vehicle_name,
   }))
   const stateOptions = states.map((s) => ({ id: s.id, name: s.state_name }))
-  const cityOptions = cities.map((c) => ({
-    id: c.id,
-    name: c.city_name,
-    stateId: c.state_id,
+  const cityOptions = cities.map((city) => ({
+    id: city.id,
+    name: city.city_name,
+    stateId: city.state_id,
   }))
 
   // Build rate snapshot from new lookup tables
@@ -77,6 +78,24 @@ export default async function NewClaimPage() {
       : Promise.resolve(null),
   ])
 
+  const intracityDailyByVehicle = Object.fromEntries(
+    await Promise.all(
+      allowedVehicles.map(async (vt) => {
+        if (!outstationLocationId) {
+          return [vt.id, 0] as const
+        }
+
+        const allowance = await getIntracityAllowanceRateByVehicle(
+          supabase,
+          outstationLocationId,
+          vt.vehicle_code
+        )
+
+        return [vt.id, allowance] as const
+      })
+    )
+  ) as Record<string, number>
+
   const claimRateSnapshot = {
     foodBaseDaily: foodBaseRate ? Number(foodBaseRate.rate_amount) : null,
     foodOutstationDaily: foodOutstationRate
@@ -87,6 +106,10 @@ export default async function NewClaimPage() {
     ) as Record<string, number>,
     intercityPerKmByVehicle: Object.fromEntries(
       allowedVehicles.map((vt) => [vt.id, Number(vt.intercity_rate_per_km)])
+    ) as Record<string, number>,
+    intracityDailyByVehicle,
+    maxKmRoundTripByVehicle: Object.fromEntries(
+      allowedVehicles.map((vt) => [vt.id, Number(vt.max_km_round_trip)])
     ) as Record<string, number>,
     foodWithPrincipalsMax: fwpRate ? Number(fwpRate.rate_amount) : null,
   }
@@ -108,7 +131,7 @@ export default async function NewClaimPage() {
             allowedVehicleTypes={allowedVehicleTypes}
             workLocationOptions={workLocationOptions}
             stateOptions={stateOptions}
-            cityOptions={cityOptions}
+            initialCityOptions={cityOptions}
             claimRateSnapshot={claimRateSnapshot}
             initialValues={null}
           />

@@ -1,17 +1,9 @@
 import type { PaginatedResult } from '@/lib/utils/pagination'
-import type {
-  WorkLocation as ConfigWorkLocation,
-  VehicleType as ConfigVehicleType,
-  TransportType as ConfigTransportType,
-} from '@/lib/services/config-service'
-
-// Actor scope mirrors the `claim_actor_scope` PostgreSQL enum — DB is source of truth.
-export type ActorScope = 'employee' | 'approver' | 'finance' | 'admin'
+import type { WorkLocation as ConfigWorkLocation } from '@/lib/services/config-service'
 
 export type WorkLocation = string
 export type VehicleType = string
-export type TransportType = string
-export type ClaimStatus = string // used for catalog/filter values (status_code)
+export type ClaimStatusId = string
 export type ExpenseItemType = string
 
 /** A simple { id, name } option for select dropdowns */
@@ -22,12 +14,6 @@ export type CityOption = SelectOption & { stateId: string }
 
 /** Full DB-backed work location object with behavioral flags */
 export type WorkLocationOption = ConfigWorkLocation
-
-/** Full DB-backed vehicle type with rates and limits */
-export type VehicleTypeOption = ConfigVehicleType
-
-/** Full DB-backed transport type */
-export type TransportTypeOption = ConfigTransportType
 
 export type Claim = {
   id: string
@@ -41,6 +27,10 @@ export type Claim = {
   outstation_city_id: string | null
   from_city_id: string | null
   to_city_id: string | null
+  has_intercity_travel?: boolean
+  has_intracity_travel?: boolean
+  intercity_own_vehicle_used?: boolean | null
+  intracity_own_vehicle_used?: boolean | null
   outstation_state_name?: string | null
   outstation_city_name: string | null
   from_city_name: string | null
@@ -83,14 +73,16 @@ export type ClaimFormValues = {
   claimDate: string
   workLocation: WorkLocation
   ownVehicleUsed?: boolean
+  hasIntercityTravel?: boolean
+  hasIntracityTravel?: boolean
+  intercityOwnVehicleUsed?: boolean
+  intracityOwnVehicleUsed?: boolean
   vehicleType?: VehicleType
-  transportType?: TransportType
   outstationStateId?: string
   outstationCityId?: string
   fromCityId?: string
   toCityId?: string
   kmTravelled?: number
-  taxiAmount?: number
   accommodationNights?: number
   foodWithPrincipalsAmount?: number
 }
@@ -100,19 +92,21 @@ export type ClaimFormInitialValues = {
   workLocation: WorkLocation
   vehicleType?: VehicleType | null
   ownVehicleUsed?: boolean | null
-  transportType?: TransportType | null
+  hasIntercityTravel?: boolean | null
+  hasIntracityTravel?: boolean | null
+  intercityOwnVehicleUsed?: boolean | null
+  intracityOwnVehicleUsed?: boolean | null
   outstationStateId?: string | null
   outstationCityId?: string | null
   fromCityId?: string | null
   toCityId?: string | null
   kmTravelled?: number | null
-  taxiAmount?: number | null
   accommodationNights?: number | null
   foodWithPrincipalsAmount?: number | null
 }
 
 export type ClaimStatusCatalogItem = {
-  status: ClaimStatus
+  status_id: ClaimStatusId
   display_label: string
   is_terminal: boolean
   sort_order: number
@@ -147,7 +141,7 @@ export type ClaimHistoryEntry = {
 export type PaginatedClaims = PaginatedResult<Claim>
 
 export type MyClaimsFilters = {
-  claimStatus: ClaimStatus | null
+  claimStatus: ClaimStatusId | null
   workLocation: string | null
   claimDate: string | null
 }

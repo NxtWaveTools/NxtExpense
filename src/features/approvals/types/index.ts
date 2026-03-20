@@ -11,15 +11,7 @@ export type ApprovalAction = {
   claim_id: string
   approver_email: string
   approval_level: number | null
-  action:
-    | 'approved'
-    | 'rejected'
-    | 'resubmitted'
-    | 'bypass_logged'
-    | 'admin_override'
-    | 'finance_issued'
-    | 'finance_rejected'
-    | 'reopened'
+  action: string
   notes: string | null
   rejection_notes: string | null
   allow_resubmit: boolean | null
@@ -38,19 +30,8 @@ export type PendingApproval = {
 
 export type PaginatedPendingApprovals = PaginatedResult<PendingApproval>
 
-export type ApprovalHistoryItem = {
-  claim: Claim
-  owner: EmployeeRow
-  action: ApprovalAction
-}
-
-export type PaginatedApprovalHistory = PaginatedResult<ApprovalHistoryItem>
-
-export type ApprovalActorFilter = 'all' | 'sbh' | 'hod' | 'finance'
-
 export type ApprovalHistoryFilters = {
   employeeName: string | null
-  actorFilter: ApprovalActorFilter
   claimStatus: string | null
   claimDate: string | null
   hodApprovedFrom: string | null
@@ -61,7 +42,6 @@ export type ApprovalHistoryFilters = {
 
 export type PendingApprovalsFilters = {
   employeeName: string | null
-  actorFilter: ApprovalActorFilter
   claimStatus: string | null
 }
 

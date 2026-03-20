@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type OAuthSignInResult = {
+type OAuthSignInResult = {
   url: string | null
   errorCode: string | null
 }
 
-export type PasswordSignInResult = {
+type PasswordSignInResult = {
   errorMessage: string | null
 }
 

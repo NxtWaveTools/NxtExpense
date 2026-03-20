@@ -21,6 +21,10 @@ import {
 import { getFilteredApprovalHistoryPaginated } from '@/features/approvals/queries/history-filters'
 import { getClaimAvailableActions } from '@/features/claims/queries'
 import { normalizeApprovalHistoryFilters } from '@/features/approvals/utils/history-filters'
+import {
+  getMaxNotesLength,
+  getMaxTextLengthValidationError,
+} from '@/lib/services/system-settings-service'
 
 type ApprovalActionResult = {
   ok: boolean
@@ -29,7 +33,7 @@ type ApprovalActionResult = {
 
 export async function submitApprovalAction(payload: {
   claimId: string
-  action: 'approved' | 'rejected'
+  action: string
   notes?: string
   allowResubmit?: boolean
 }): Promise<ApprovalActionResult> {
@@ -56,9 +60,35 @@ export async function submitApprovalAction(payload: {
     return { ok: false, error: 'Approver employee profile not found.' }
   }
 
+  const maxNotesLength = await getMaxNotesLength(supabase)
+  const notesValidationError = getMaxTextLengthValidationError(
+    parsed.data.notes,
+    maxNotesLength,
+    'Notes'
+  )
+
+  if (notesValidationError) {
+    return { ok: false, error: notesValidationError }
+  }
+
   const claimWithOwner = await getClaimWithOwner(supabase, parsed.data.claimId)
   if (!claimWithOwner) {
     return { ok: false, error: 'Claim not found.' }
+  }
+
+  const availableActions = await getClaimAvailableActions(
+    supabase,
+    claimWithOwner.claim.id
+  )
+  const canRunAction = availableActions.some(
+    (action) => action.action === parsed.data.action
+  )
+
+  if (!canRunAction) {
+    return {
+      ok: false,
+      error: 'This workflow action is not available for the claim state.',
+    }
   }
 
   const { error: approvalError } = await supabase.rpc(
@@ -67,10 +97,7 @@ export async function submitApprovalAction(payload: {
       p_claim_id: claimWithOwner.claim.id,
       p_action: parsed.data.action,
       p_notes: parsed.data.notes ?? null,
-      p_allow_resubmit:
-        parsed.data.action === 'rejected'
-          ? Boolean(parsed.data.allowResubmit)
-          : false,
+      p_allow_resubmit: Boolean(parsed.data.allowResubmit),
     }
   )
 
@@ -94,7 +121,6 @@ function getPendingFilters(
 ): PendingApprovalsFilters {
   return {
     employeeName: normalizedFilters.employeeName,
-    actorFilter: normalizedFilters.actorFilter,
     claimStatus: normalizedFilters.claimStatus,
   }
 }
@@ -148,7 +174,7 @@ export async function getApprovalHistoryAction(
 
 export async function submitBulkApprovalAction(payload: {
   claimIds: string[]
-  action: 'approved' | 'rejected'
+  action: string
   notes?: string
   allowResubmit?: boolean
 }): Promise<BulkApprovalActionResult> {
@@ -196,6 +222,26 @@ export async function submitBulkApprovalAction(payload: {
     }
   }
 
+  const maxNotesLength = await getMaxNotesLength(supabase)
+  const notesValidationError = getMaxTextLengthValidationError(
+    parsed.data.notes,
+    maxNotesLength,
+    'Notes'
+  )
+
+  if (notesValidationError) {
+    return {
+      ok: false,
+      error: notesValidationError,
+      succeeded: 0,
+      failed: parsed.data.claimIds.length,
+      errors: parsed.data.claimIds.map((claimId) => ({
+        claimId,
+        message: notesValidationError,
+      })),
+    }
+  }
+
   const result: BulkApprovalActionResult = {
     ok: true,
     error: null,
@@ -205,14 +251,26 @@ export async function submitBulkApprovalAction(payload: {
   }
 
   for (const claimId of parsed.data.claimIds) {
+    const availableActions = await getClaimAvailableActions(supabase, claimId)
+    const canRunAction = availableActions.some(
+      (action) => action.action === parsed.data.action
+    )
+
+    if (!canRunAction) {
+      result.ok = false
+      result.failed += 1
+      result.errors.push({
+        claimId,
+        message: 'This workflow action is not available for the claim state.',
+      })
+      continue
+    }
+
     const { error } = await supabase.rpc('submit_approval_action_atomic', {
       p_claim_id: claimId,
       p_action: parsed.data.action,
       p_notes: parsed.data.notes ?? null,
-      p_allow_resubmit:
-        parsed.data.action === 'rejected'
-          ? Boolean(parsed.data.allowResubmit)
-          : false,
+      p_allow_resubmit: Boolean(parsed.data.allowResubmit),
     })
 
     if (error) {

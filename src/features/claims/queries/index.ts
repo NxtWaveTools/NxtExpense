@@ -11,13 +11,34 @@ import type {
   PaginatedClaims,
 } from '@/features/claims/types'
 import { decodeCursor, encodeCursor } from '@/lib/utils/pagination'
-import {
-  getClaimStatusDisplayLabel,
-  VISIBLE_CLAIM_STATUS_CODES,
-} from '@/lib/utils/claim-status'
+import { getClaimStatusDisplayLabel } from '@/lib/utils/claim-status'
 
-export const CLAIM_COLUMNS =
+const LEGACY_CLAIM_COLUMNS =
   'id, claim_number, employee_id, claim_date, work_location_id, work_locations(location_name), own_vehicle_used, vehicle_type_id, vehicle_types(vehicle_name), outstation_state_id, outstation_city_id, from_city_id, to_city_id, outstation_state:states!outstation_state_id(state_name), outstation_city:cities!outstation_city_id(city_name), from_city_data:cities!from_city_id(city_name), to_city_data:cities!to_city_id(city_name), km_travelled, total_amount, status_id, allow_resubmit, is_superseded, claim_statuses!status_id(status_code, status_name, display_color, is_terminal, is_rejection), current_approval_level, submitted_at, created_at, updated_at, resubmission_count, last_rejection_notes, last_rejected_at, accommodation_nights, food_with_principals_amount'
+
+const SEGMENT_CLAIM_COLUMNS =
+  'has_intercity_travel, has_intracity_travel, intercity_own_vehicle_used, intracity_own_vehicle_used'
+
+export const CLAIM_COLUMNS = LEGACY_CLAIM_COLUMNS
+
+const CLAIM_COLUMNS_WITH_SEGMENTS = `${LEGACY_CLAIM_COLUMNS}, ${SEGMENT_CLAIM_COLUMNS}`
+
+function isMissingOutstationSegmentColumnsError(
+  error: { message?: string } | null
+): boolean {
+  const message = error?.message?.toLowerCase() ?? ''
+
+  if (!message.includes('does not exist')) {
+    return false
+  }
+
+  return (
+    message.includes('expense_claims.has_intercity_travel') ||
+    message.includes('expense_claims.has_intracity_travel') ||
+    message.includes('expense_claims.intercity_own_vehicle_used') ||
+    message.includes('expense_claims.intracity_own_vehicle_used')
+  )
+}
 
 // Maps raw Supabase FK join row to flat Claim type
 export function mapClaimRow(raw: Record<string, unknown>): Claim {
@@ -40,6 +61,10 @@ export function mapClaimRow(raw: Record<string, unknown>): Claim {
     : r.to_city_data
   return {
     ...r,
+    has_intercity_travel: r.has_intercity_travel ?? false,
+    has_intracity_travel: r.has_intracity_travel ?? false,
+    intercity_own_vehicle_used: r.intercity_own_vehicle_used ?? null,
+    intracity_own_vehicle_used: r.intracity_own_vehicle_used ?? null,
     statusName: getClaimStatusDisplayLabel(statusCode, statusInfo?.status_name),
     statusDisplayColor: statusInfo?.display_color ?? 'neutral',
     is_terminal: statusInfo?.is_terminal ?? false,
@@ -66,47 +91,50 @@ export async function getMyClaimsPaginated(
   limit = 10,
   filters: MyClaimsFilters = DEFAULT_MY_CLAIMS_FILTERS
 ): Promise<PaginatedClaims> {
-  let query = supabase
-    .from('expense_claims')
-    .select(CLAIM_COLUMNS)
-    .eq('employee_id', employeeId)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(limit + 1)
+  const runClaimsQuery = async (columns: string) => {
+    let query = supabase
+      .from('expense_claims')
+      .select(columns)
+      .eq('employee_id', employeeId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(limit + 1)
 
-  if (cursor) {
-    const decoded = decodeCursor(cursor)
-    query = query.or(
-      `created_at.lt.${decoded.created_at},and(created_at.eq.${decoded.created_at},id.lt.${decoded.id})`
-    )
-  }
-
-  if (filters.claimStatus) {
-    const { data: statusRow } = await supabase
-      .from('claim_statuses')
-      .select('id')
-      .eq('status_code', filters.claimStatus)
-      .maybeSingle()
-    if (statusRow) {
-      query = query.eq('status_id', statusRow.id)
+    if (cursor) {
+      const decoded = decodeCursor(cursor)
+      query = query.or(
+        `created_at.lt.${decoded.created_at},and(created_at.eq.${decoded.created_at},id.lt.${decoded.id})`
+      )
     }
+
+    if (filters.claimStatus) {
+      query = query.eq('status_id', filters.claimStatus)
+    }
+
+    if (filters.workLocation) {
+      query = query.eq('work_location_id', filters.workLocation)
+    }
+
+    if (filters.claimDate) {
+      query = query.eq('claim_date', filters.claimDate)
+    }
+
+    return query
   }
 
-  if (filters.workLocation) {
-    query = query.eq('work_location_id', filters.workLocation)
-  }
+  let { data, error } = await runClaimsQuery(CLAIM_COLUMNS_WITH_SEGMENTS)
 
-  if (filters.claimDate) {
-    query = query.eq('claim_date', filters.claimDate)
+  if (error && isMissingOutstationSegmentColumnsError(error)) {
+    ;({ data, error } = await runClaimsQuery(CLAIM_COLUMNS))
   }
-
-  const { data, error } = await query
 
   if (error) {
     throw new Error(error.message)
   }
 
-  const rows = (data ?? []).map(mapClaimRow)
+  const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(
+    mapClaimRow
+  )
   const hasNextPage = rows.length > limit
   const pageData = hasNextPage ? rows.slice(0, limit) : rows
 
@@ -131,11 +159,22 @@ export async function getClaimById(
   supabase: SupabaseClient,
   claimId: string
 ): Promise<ClaimWithItems | null> {
-  const { data: claimData, error: claimError } = await supabase
-    .from('expense_claims')
-    .select(CLAIM_COLUMNS)
-    .eq('id', claimId)
-    .maybeSingle()
+  const runClaimByIdQuery = async (columns: string) => {
+    return supabase
+      .from('expense_claims')
+      .select(columns)
+      .eq('id', claimId)
+      .maybeSingle()
+  }
+
+  let { data: claimData, error: claimError } = await runClaimByIdQuery(
+    CLAIM_COLUMNS_WITH_SEGMENTS
+  )
+
+  if (claimError && isMissingOutstationSegmentColumnsError(claimError)) {
+    ;({ data: claimData, error: claimError } =
+      await runClaimByIdQuery(CLAIM_COLUMNS))
+  }
 
   if (claimError) {
     throw new Error(claimError.message)
@@ -155,7 +194,7 @@ export async function getClaimById(
   }
 
   return {
-    claim: mapClaimRow(claimData as Record<string, unknown>),
+    claim: mapClaimRow(claimData as unknown as Record<string, unknown>),
     items: (itemData ?? []) as ClaimItem[],
   }
 }
@@ -166,10 +205,9 @@ export async function getClaimStatusCatalog(
   const { data, error } = await supabase
     .from('claim_statuses')
     .select(
-      'status_code, status_name, is_terminal, display_order, display_color'
+      'id, status_code, status_name, is_terminal, display_order, display_color'
     )
     .eq('is_active', true)
-    .in('status_code', [...VISIBLE_CLAIM_STATUS_CODES])
     .order('display_order', { ascending: true })
 
   if (error) {
@@ -177,7 +215,7 @@ export async function getClaimStatusCatalog(
   }
 
   return (data ?? []).map((row) => ({
-    status: row.status_code,
+    status_id: row.id,
     display_label: getClaimStatusDisplayLabel(row.status_code, row.status_name),
     is_terminal: row.is_terminal,
     sort_order: row.display_order,
@@ -199,6 +237,81 @@ export async function getClaimAvailableActions(
   }
 
   return (data ?? []) as ClaimAvailableAction[]
+}
+
+type BulkClaimAvailableActionRow = ClaimAvailableAction & {
+  claim_id: string
+}
+
+function isMissingBulkActionsRpcError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? ''
+
+  return (
+    message.includes('get_claim_available_actions_bulk') &&
+    (message.includes('schema cache') || message.includes('does not exist'))
+  )
+}
+
+export async function getClaimAvailableActionsByClaimIds(
+  supabase: SupabaseClient,
+  claimIds: string[]
+): Promise<Map<string, ClaimAvailableAction[]>> {
+  const uniqueClaimIds = [...new Set(claimIds)]
+
+  if (uniqueClaimIds.length === 0) {
+    return new Map()
+  }
+
+  const actionsByClaimId = new Map<string, ClaimAvailableAction[]>(
+    uniqueClaimIds.map((claimId) => [claimId, []])
+  )
+
+  const { data, error } = await supabase.rpc(
+    'get_claim_available_actions_bulk',
+    {
+      p_claim_ids: uniqueClaimIds,
+    }
+  )
+
+  // Keep compatibility with environments where the bulk RPC migration
+  // has not been applied yet by falling back to per-claim lookups.
+  if (error) {
+    if (!isMissingBulkActionsRpcError(error)) {
+      throw new Error(error.message)
+    }
+
+    const fallbackResults = await Promise.all(
+      uniqueClaimIds.map(async (claimId) => {
+        const actions = await getClaimAvailableActions(supabase, claimId)
+        return { claimId, actions }
+      })
+    )
+
+    for (const fallbackResult of fallbackResults) {
+      actionsByClaimId.set(fallbackResult.claimId, fallbackResult.actions)
+    }
+
+    return actionsByClaimId
+  }
+
+  for (const row of (data ?? []) as BulkClaimAvailableActionRow[]) {
+    const existing = actionsByClaimId.get(row.claim_id)
+
+    if (!existing) {
+      actionsByClaimId.set(row.claim_id, [row])
+      continue
+    }
+
+    existing.push({
+      action: row.action,
+      display_label: row.display_label,
+      require_notes: row.require_notes,
+      supports_allow_resubmit: row.supports_allow_resubmit,
+      actor_scope: row.actor_scope,
+    })
+  }
+
+  return actionsByClaimId
 }
 
 export async function getClaimHistory(

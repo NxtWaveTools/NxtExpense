@@ -6,11 +6,9 @@ const mocks = vi.hoisted(() => ({
   getEmployeeRoles: vi.fn(),
   canAccessEmployeeClaimsFromRoles: vi.fn(),
   getAllWorkLocations: vi.fn(),
-  getClaimStatusByCode: vi.fn(),
   getDesignationApprovalFlow: vi.fn(),
   calculateBaseLocationItems: vi.fn(),
-  calculateOutstationOwnVehicleItems: vi.fn(),
-  calculateOutstationTaxiItems: vi.fn(),
+  calculateOutstationTravelItems: vi.fn(),
   getVehicleTypeById: vi.fn(),
   countFoodWithPrincipalsInMonth: vi.fn(),
   getFoodWithPrincipalsLimit: vi.fn(),
@@ -55,7 +53,6 @@ vi.mock('@/lib/services/config-service', async () => {
   return {
     ...actual,
     getAllWorkLocations: mocks.getAllWorkLocations,
-    getClaimStatusByCode: mocks.getClaimStatusByCode,
     getDesignationApprovalFlow: mocks.getDesignationApprovalFlow,
   }
 })
@@ -68,9 +65,7 @@ vi.mock('@/lib/services/calculation-service', async () => {
   return {
     ...actual,
     calculateBaseLocationItems: mocks.calculateBaseLocationItems,
-    calculateOutstationOwnVehicleItems:
-      mocks.calculateOutstationOwnVehicleItems,
-    calculateOutstationTaxiItems: mocks.calculateOutstationTaxiItems,
+    calculateOutstationTravelItems: mocks.calculateOutstationTravelItems,
     getVehicleTypeById: mocks.getVehicleTypeById,
     countFoodWithPrincipalsInMonth: mocks.countFoodWithPrincipalsInMonth,
     getFoodWithPrincipalsLimit: mocks.getFoodWithPrincipalsLimit,
@@ -105,7 +100,10 @@ const BASE_LOCATION_INPUT = {
 const OUTSTATION_OWN_INPUT = {
   claimDate: '06/03/2026',
   workLocation: 'wl-outstation',
-  ownVehicleUsed: true,
+  hasIntercityTravel: true,
+  hasIntracityTravel: false,
+  intercityOwnVehicleUsed: true,
+  intracityOwnVehicleUsed: false,
   vehicleType: 'veh-2w',
   outstationStateId: 'state-tg',
   fromCityId: 'city-a',
@@ -115,15 +113,13 @@ const OUTSTATION_OWN_INPUT = {
   foodWithPrincipalsAmount: 0,
 }
 
-const OUTSTATION_TAXI_INPUT = {
+const OUTSTATION_NO_OWN_VEHICLE_INPUT = {
   claimDate: '06/03/2026',
   workLocation: 'wl-outstation',
-  ownVehicleUsed: false,
-  outstationStateId: 'state-tg',
-  fromCityId: 'city-a',
-  toCityId: 'city-b',
-  transportType: 'Taxi',
-  taxiAmount: 350,
+  hasIntercityTravel: false,
+  hasIntracityTravel: false,
+  intercityOwnVehicleUsed: false,
+  intracityOwnVehicleUsed: false,
   accommodationNights: 0,
   foodWithPrincipalsAmount: 0,
 }
@@ -135,6 +131,30 @@ describe('submitClaimAction branch coverage', () => {
     vi.clearAllMocks()
 
     rpcMock = vi.fn().mockResolvedValue({ error: null })
+
+    const claimStatusesQuery = {
+      approvalLevel: 1,
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockImplementation(function (
+        this: { approvalLevel: number },
+        column: string,
+        value: unknown
+      ) {
+        if (column === 'approval_level' && typeof value === 'number') {
+          this.approvalLevel = value
+        }
+        return this
+      }),
+      order: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockImplementation(function (this: {
+        approvalLevel: number
+      }) {
+        if (this.approvalLevel === 99) {
+          return Promise.resolve({ data: null, error: null })
+        }
+        return Promise.resolve({ data: { id: 'status-l1' }, error: null })
+      }),
+    }
 
     const citiesQuery = {
       select: vi.fn().mockReturnThis(),
@@ -157,10 +177,15 @@ describe('submitClaimAction branch coverage', () => {
       },
       rpc: rpcMock,
       from: vi.fn((table: string) => {
-        if (table !== 'cities') {
-          throw new Error(`Unexpected table query in test: ${table}`)
+        if (table === 'cities') {
+          return citiesQuery
         }
-        return citiesQuery
+
+        if (table === 'claim_statuses') {
+          return claimStatusesQuery
+        }
+
+        throw new Error(`Unexpected table query in test: ${table}`)
       }),
     })
 
@@ -194,8 +219,6 @@ describe('submitClaimAction branch coverage', () => {
     mocks.getDesignationApprovalFlow.mockResolvedValue({
       required_approval_levels: [1],
     })
-
-    mocks.getClaimStatusByCode.mockResolvedValue({ id: 'status-l1' })
     mocks.getVehicleTypeById.mockResolvedValue({
       vehicle_name: 'Two Wheeler',
       max_km_round_trip: 150,
@@ -206,16 +229,11 @@ describe('submitClaimAction branch coverage', () => {
       total: 180,
     })
 
-    mocks.calculateOutstationOwnVehicleItems.mockResolvedValue({
+    mocks.calculateOutstationTravelItems.mockResolvedValue({
       items: [
         { expense_type: 'FUEL', amount: 500, description: 'Intercity fuel' },
       ],
       total: 500,
-    })
-
-    mocks.calculateOutstationTaxiItems.mockResolvedValue({
-      items: [{ expense_type: 'TAXI', amount: 350, description: 'Taxi fare' }],
-      total: 350,
     })
 
     mocks.getFoodWithPrincipalsLimit.mockResolvedValue(100)
@@ -247,6 +265,31 @@ describe('submitClaimAction branch coverage', () => {
     expect(result.ok).toBe(false)
     expect(result.error).toBe(
       'Vehicle type is required for this work location.'
+    )
+  })
+
+  it('should require explicit inter-city own-vehicle selection for outstation claims', async () => {
+    const result = await submitClaimAction({
+      claimDate: '06/03/2026',
+      workLocation: 'wl-outstation',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe(
+      'Please select whether you travelled between cities using your own vehicle.'
+    )
+  })
+
+  it('should require explicit intra-city own-vehicle selection after inter-city is no', async () => {
+    const result = await submitClaimAction({
+      claimDate: '06/03/2026',
+      workLocation: 'wl-outstation',
+      intercityOwnVehicleUsed: false,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe(
+      'Please select whether you travelled within the city using your own vehicle.'
     )
   })
 
@@ -282,16 +325,47 @@ describe('submitClaimAction branch coverage', () => {
     expect(result.error).toBe(expected)
   })
 
-  it('should allow no-own-vehicle outstation claim without transport selection', async () => {
+  it('should allow no-own-vehicle outstation claim', async () => {
     const result = await submitClaimAction({
-      ...OUTSTATION_TAXI_INPUT,
-      transportType: '   ',
+      ...OUTSTATION_NO_OWN_VEHICLE_INPUT,
     })
 
     expect(result.ok).toBe(true)
-    expect(mocks.calculateOutstationTaxiItems).toHaveBeenCalledWith(
+    expect(mocks.calculateOutstationTravelItems).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ transportTypeName: 'Taxi' })
+      expect.objectContaining({
+        hasIntercityTravel: false,
+        intercityOwnVehicleUsed: false,
+      })
+    )
+  })
+
+  it('should allow outstation claim when both own-vehicle options are no', async () => {
+    const result = await submitClaimAction({
+      ...OUTSTATION_NO_OWN_VEHICLE_INPUT,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(mocks.calculateOutstationTravelItems).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        hasIntercityTravel: false,
+        hasIntracityTravel: false,
+        intercityOwnVehicleUsed: false,
+        intracityOwnVehicleUsed: false,
+      })
+    )
+    expect(mocks.insertClaim).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        ownVehicleUsed: false,
+        vehicleTypeId: null,
+        outstationStateId: null,
+        outstationCityId: null,
+        fromCityId: null,
+        toCityId: null,
+        kmTravelled: null,
+      })
     )
   })
 
@@ -303,7 +377,7 @@ describe('submitClaimAction branch coverage', () => {
 
     expect(result.ok).toBe(false)
     expect(result.error).toContain('exceeds max limit')
-    expect(mocks.calculateOutstationOwnVehicleItems).not.toHaveBeenCalled()
+    expect(mocks.calculateOutstationTravelItems).not.toHaveBeenCalled()
   })
 
   it('should enforce food with principals eligibility and monthly cap', async () => {
@@ -348,7 +422,9 @@ describe('submitClaimAction branch coverage', () => {
 
     const unsupportedLevel = await submitClaimAction(BASE_LOCATION_INPUT)
     expect(unsupportedLevel.ok).toBe(false)
-    expect(unsupportedLevel.error).toContain('Unsupported first approval level')
+    expect(unsupportedLevel.error).toContain(
+      'No active pending claim status found for approval level 99'
+    )
   })
 
   it('should return default workflow start message on non-Error failures', async () => {
@@ -360,7 +436,7 @@ describe('submitClaimAction branch coverage', () => {
     expect(result.error).toBe('Unable to start workflow.')
   })
 
-  it('should map expense items for standard submissions and taxi submissions', async () => {
+  it('should map expense items for standard and no-own-vehicle submissions', async () => {
     const standardResult = await submitClaimAction(BASE_LOCATION_INPUT)
     expect(standardResult.ok).toBe(true)
 
@@ -373,21 +449,28 @@ describe('submitClaimAction branch coverage', () => {
       },
     ])
 
-    await submitClaimAction(OUTSTATION_TAXI_INPUT)
+    await submitClaimAction(OUTSTATION_NO_OWN_VEHICLE_INPUT)
 
-    expect(mocks.calculateOutstationTaxiItems).toHaveBeenCalledWith(
+    expect(mocks.calculateOutstationTravelItems).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ transportTypeName: 'Taxi' })
+      expect.objectContaining({
+        hasIntercityTravel: false,
+        intercityOwnVehicleUsed: false,
+      })
     )
     expect(mocks.insertClaim).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         ownVehicleUsed: false,
+        hasIntercityTravel: false,
+        hasIntracityTravel: false,
+        intercityOwnVehicleUsed: null,
+        intracityOwnVehicleUsed: null,
         vehicleTypeId: null,
-        outstationStateId: 'state-tg',
-        outstationCityId: 'city-b',
-        fromCityId: 'city-a',
-        toCityId: 'city-b',
+        outstationStateId: null,
+        outstationCityId: null,
+        fromCityId: null,
+        toCityId: null,
         kmTravelled: null,
       })
     )
@@ -458,10 +541,23 @@ describe('submitClaimAction branch coverage', () => {
     })
 
     expect(result.ok).toBe(true)
+    expect(mocks.calculateOutstationTravelItems).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        hasIntercityTravel: true,
+        hasIntracityTravel: true,
+        intercityOwnVehicleUsed: true,
+        intracityOwnVehicleUsed: true,
+      })
+    )
     expect(mocks.insertClaim).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         ownVehicleUsed: true,
+        hasIntercityTravel: true,
+        hasIntracityTravel: true,
+        intercityOwnVehicleUsed: true,
+        intracityOwnVehicleUsed: true,
         vehicleTypeId: 'veh-2w',
         outstationStateId: 'state-tg',
         outstationCityId: 'city-b',
@@ -501,6 +597,10 @@ describe('submitClaimAction branch coverage', () => {
       expect.anything(),
       expect.objectContaining({
         ownVehicleUsed: true,
+        hasIntercityTravel: true,
+        hasIntracityTravel: true,
+        intercityOwnVehicleUsed: true,
+        intracityOwnVehicleUsed: true,
         vehicleTypeId: 'veh-2w',
         outstationStateId: 'state-tg',
         outstationCityId: 'city-b',

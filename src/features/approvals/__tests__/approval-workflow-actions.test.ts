@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getFilteredApprovalHistoryPaginated: vi.fn(),
   getClaimAvailableActions: vi.fn(),
   normalizeApprovalHistoryFilters: vi.fn(),
+  getMaxNotesLength: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -47,6 +48,17 @@ vi.mock('@/features/claims/queries', () => ({
 vi.mock('@/features/approvals/utils/history-filters', () => ({
   normalizeApprovalHistoryFilters: mocks.normalizeApprovalHistoryFilters,
 }))
+
+vi.mock('@/lib/services/system-settings-service', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/lib/services/system-settings-service')
+  >('@/lib/services/system-settings-service')
+
+  return {
+    ...actual,
+    getMaxNotesLength: mocks.getMaxNotesLength,
+  }
+})
 
 import {
   getApprovalHistoryAction,
@@ -87,7 +99,6 @@ describe('approval actions workflow integration', () => {
 
     mocks.normalizeApprovalHistoryFilters.mockReturnValue({
       employeeName: null,
-      actorFilter: 'all',
       claimStatus: null,
       claimDate: null,
       hodApprovedFrom: null,
@@ -118,7 +129,16 @@ describe('approval actions workflow integration', () => {
         supports_allow_resubmit: false,
         actor_scope: 'approver',
       },
+      {
+        action: 'rejected',
+        display_label: 'Reject',
+        require_notes: true,
+        supports_allow_resubmit: true,
+        actor_scope: 'approver',
+      },
     ])
+
+    mocks.getMaxNotesLength.mockResolvedValue(500)
   })
 
   it('should submit approval and transition Submitted to SBH review', async () => {
@@ -310,6 +330,23 @@ describe('approval actions workflow integration', () => {
     expect(rpcMock).not.toHaveBeenCalled()
   })
 
+  it('should enforce notes limit from system settings', async () => {
+    // Arrange
+    mocks.getMaxNotesLength.mockResolvedValueOnce(10)
+
+    // Act
+    const result = await submitApprovalAction({
+      claimId: '5db22d75-b209-4f30-b5c8-f4f27ebee9e8',
+      action: 'rejected',
+      notes: 'This note is too long.',
+    })
+
+    // Assert
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('Notes cannot exceed 10 characters.')
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
+
   it('should return unauthorized when session is missing', async () => {
     // Arrange
     mocks.createSupabaseServerClient.mockResolvedValue({
@@ -439,7 +476,6 @@ describe('approval actions workflow integration', () => {
     // Arrange
     const rawFilters = {
       employeeName: 'Yohan',
-      actorFilter: 'sbh',
       claimDate: '01/03/2026',
     }
 
@@ -457,7 +493,6 @@ describe('approval actions workflow integration', () => {
       10,
       {
         employeeName: null,
-        actorFilter: 'all',
         claimStatus: null,
       }
     )
@@ -494,7 +529,7 @@ describe('approval actions workflow integration', () => {
   it('should pass normalized filters to approval history query', async () => {
     // Act
     await getApprovalHistoryAction('cursor-1', 20, {
-      claimStatus: 'L1_PENDING',
+      claimStatus: '7a0068ba-39c3-4229-b6f5-88559ace4e77',
       claimDate: '2026-03-01',
     })
 
@@ -505,7 +540,6 @@ describe('approval actions workflow integration', () => {
       20,
       {
         employeeName: null,
-        actorFilter: 'all',
         claimStatus: null,
         claimDate: null,
         hodApprovedFrom: null,
@@ -523,7 +557,7 @@ describe('approval actions workflow integration', () => {
     )
 
     // Assert
-    expect(result).toHaveLength(1)
+    expect(result).toHaveLength(2)
     expect(mocks.getClaimAvailableActions).toHaveBeenCalledWith(
       expect.anything(),
       '5db22d75-b209-4f30-b5c8-f4f27ebee9e8'

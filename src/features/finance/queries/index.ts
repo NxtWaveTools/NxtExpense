@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Claim } from '@/features/claims/types'
 import {
-  getClaimAvailableActions,
+  getClaimAvailableActionsByClaimIds,
   CLAIM_COLUMNS,
   mapClaimRow,
 } from '@/features/claims/queries'
@@ -27,10 +27,76 @@ const DEFAULT_FINANCE_FILTERS: FinanceFilters = {
   hodApproverEmployeeId: null,
   claimStatus: null,
   workLocation: null,
-  actionFilter: 'all',
+  actionFilter: null,
   dateFilterField: 'claim_date',
   dateFrom: null,
   dateTo: null,
+}
+
+type FinanceActionTransitionRow = {
+  action_code: string
+  to_status_id: string
+}
+
+function normalizeFinanceHistoryActionCode(
+  actionCode: string,
+  toStatusId: string,
+  paymentIssuedStatusIds: Set<string>
+): string {
+  if (
+    paymentIssuedStatusIds.has(toStatusId) &&
+    actionCode.startsWith('finance_')
+  ) {
+    return actionCode.slice('finance_'.length)
+  }
+
+  return actionCode
+}
+
+async function getPaymentIssuedHistoryActions(
+  supabase: SupabaseClient
+): Promise<string[]> {
+  const { data: paymentIssuedStatuses, error: paymentIssuedStatusError } =
+    await supabase
+      .from('claim_statuses')
+      .select('id')
+      .eq('is_payment_issued', true)
+      .eq('is_active', true)
+
+  if (paymentIssuedStatusError) {
+    throw new Error(paymentIssuedStatusError.message)
+  }
+
+  const paymentIssuedStatusIds = new Set(
+    (paymentIssuedStatuses ?? []).map((row) => row.id)
+  )
+
+  if (paymentIssuedStatusIds.size === 0) {
+    return []
+  }
+
+  const { data: transitionRows, error: transitionError } = await supabase
+    .from('claim_status_transitions')
+    .select('action_code, to_status_id')
+    .eq('is_active', true)
+
+  if (transitionError) {
+    throw new Error(transitionError.message)
+  }
+
+  return [
+    ...new Set(
+      ((transitionRows ?? []) as FinanceActionTransitionRow[])
+        .filter((row) => paymentIssuedStatusIds.has(row.to_status_id))
+        .map((row) =>
+          normalizeFinanceHistoryActionCode(
+            row.action_code,
+            row.to_status_id,
+            paymentIssuedStatusIds
+          )
+        )
+    ),
+  ]
 }
 
 export { getFinanceFilterOptions }
@@ -102,30 +168,28 @@ export async function getFinanceQueuePaginated(
   >
   const hasNextPage = rows.length > limit
   const pageData = hasNextPage ? rows.slice(0, limit) : rows
-
-  const mappedData = await Promise.all(
-    pageData.map(async (row) => {
-      const owner = Array.isArray(row.employees)
-        ? row.employees[0]
-        : row.employees
-
-      if (!owner) {
-        throw new Error('Claim owner mapping not found.')
-      }
-
-      const claim = mapClaimRow(row) as Claim
-      const availableActions = await getClaimAvailableActions(
-        supabase,
-        row.id as string
-      )
-
-      return {
-        claim,
-        owner,
-        availableActions,
-      }
-    })
+  const availableActionsByClaimId = await getClaimAvailableActionsByClaimIds(
+    supabase,
+    pageData.map((row) => row.id as string)
   )
+
+  const mappedData = pageData.map((row) => {
+    const owner = Array.isArray(row.employees)
+      ? row.employees[0]
+      : row.employees
+
+    if (!owner) {
+      throw new Error('Claim owner mapping not found.')
+    }
+
+    const claimId = row.id as string
+
+    return {
+      claim: mapClaimRow(row) as Claim,
+      owner,
+      availableActions: availableActionsByClaimId.get(claimId) ?? [],
+    }
+  })
 
   const lastRecord = pageData.at(-1)
   const nextCursor =
@@ -171,7 +235,6 @@ export async function getFinanceHistoryPaginated(
     .select(
       'id, claim_id, actor_employee_id, action, notes, acted_at, actor:employees!actor_employee_id(employee_email, employee_name)'
     )
-    .in('action', ['issued', 'finance_rejected'])
     .order('acted_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit + 1)
@@ -181,8 +244,19 @@ export async function getFinanceHistoryPaginated(
     (filters.dateFrom || filters.dateTo)
 
   if (filterByApprovedDate) {
-    query = query.eq('action', 'issued')
-  } else if (filters.actionFilter !== 'all') {
+    const paymentIssuedActions = await getPaymentIssuedHistoryActions(supabase)
+
+    if (paymentIssuedActions.length === 0) {
+      return {
+        data: [],
+        hasNextPage: false,
+        nextCursor: null,
+        limit,
+      }
+    }
+
+    query = query.in('action', paymentIssuedActions)
+  } else if (filters.actionFilter) {
     query = query.eq('action', filters.actionFilter)
   }
 
@@ -223,7 +297,7 @@ export async function getFinanceHistoryPaginated(
       | { employee_email: string; employee_name: string }
       | { employee_email: string; employee_name: string }[]
       | null
-    action: 'issued' | 'finance_rejected'
+    action: string
     notes: string | null
     acted_at: string
   }>

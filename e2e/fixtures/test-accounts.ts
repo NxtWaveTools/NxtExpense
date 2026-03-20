@@ -5,81 +5,91 @@
 
 export const TEST_PASSWORD = 'Password@123'
 
-// ── SRO / BOA / ABH (L1 → SBH, L3 → Mansoor) ────────────────────────────
+type TestAccount = {
+  email: string
+  label: string
+  designation: string
+  state?: string
+}
 
-export const SRO_AP = {
+// Group 1: Standard flow submitters (L1 approver -> Mansoor -> Finance)
+
+export const SRO_AP: TestAccount = {
   email: 'yohan.mutluri@nxtwave.co.in',
-  label: 'SRO AP — Yohan Mutluri',
+  label: 'SRO AP - Yohan Mutluri',
   designation: 'Student Relationship Officer',
   state: 'Andhra Pradesh',
 }
 
-export const SRO_KERALA = {
+export const SRO_KERALA: TestAccount = {
   email: 'akshay.e@nxtwave.co.in',
-  label: 'SRO Kerala — Akshay E',
+  label: 'SRO Kerala - Akshay E',
   designation: 'Student Relationship Officer',
   state: 'Kerala',
 }
 
-export const BOA_KARNATAKA = {
+export const BOA_KARNATAKA: TestAccount = {
   email: 'bhargavraj.gv@nxtwave.co.in',
-  label: 'BOA Karnataka — Bhargav Raj Gv',
+  label: 'BOA Karnataka - Bhargav Raj Gv',
   designation: 'Business Operation Associate',
   state: 'Karnataka',
 }
 
-export const ABH_TN = {
+export const ABH_TAMIL_NADU: TestAccount = {
   email: 'hari.haran@nxtwave.co.in',
-  label: 'ABH Tamil Nadu — Hari Haran S',
+  label: 'ABH Tamil Nadu - Hari Haran S',
   designation: 'Area Business Head',
   state: 'Tamil Nadu',
 }
 
-// ── SBH / ZBH / PM (L3 → Mansoor directly) ────────────────────────────────
+// Group 2: Direct flow submitters (Mansoor -> Finance)
 
-export const SBH_AP = {
+export const SBH_AP: TestAccount = {
   email: 'nagaraju.madugula@nxtwave.co.in',
-  label: 'SBH AP — Madugula Nagaraju',
+  label: 'SBH AP - Madugula Nagaraju',
   designation: 'State Business Head',
   state: 'Andhra Pradesh',
 }
 
-export const SBH_KARNATAKA = {
+export const SBH_KARNATAKA: TestAccount = {
   email: 'vignesh.shenoy@nxtwave.co.in',
-  label: 'SBH Karnataka — Vignesh Shenoy',
+  label: 'SBH Karnataka - Vignesh Shenoy',
   designation: 'State Business Head',
   state: 'Karnataka',
 }
 
-export const ZBH_MULTI = {
+export const ZBH_MULTI_STATE: TestAccount = {
   email: 'satyapriya.dash@nxtwave.co.in',
-  label: 'ZBH Multi — Satya Priya Dash',
+  label: 'ZBH Multi-State - Satya Priya Dash',
   designation: 'Zonal Business Head',
+  state: 'Delhi NCR, West Bengal, Odisha, Rajasthan, Uttar Pradesh',
 }
 
-export const PM_MANSOOR = {
+export const PM_MANSOOR: TestAccount = {
   email: 'mansoor@nxtwave.co.in',
-  label: 'PM — Mansoor Valli Gangupalli',
+  label: 'PM - Mansoor Valli Gangupalli',
   designation: 'Program Manager',
+  state: 'All States',
 }
 
-// ── Approvers ──────────────────────────────────────────────────────────────
+// Approver-only utility accounts
 
-export const SBH_TN_KERALA = {
+export const SBH_TN_KERALA: TestAccount = {
   email: 'sreejish.mohanakumar@nxtwave.co.in',
-  label: 'SBH TN+Kerala — L1 approver for Akshay/Hari',
+  label: 'SBH TN/Kerala - Sreejish Mohana Kumar',
   designation: 'State Business Head',
+  state: 'Tamil Nadu, Kerala',
 }
 
-// ── Finance Team ───────────────────────────────────────────────────────────
+// Finance team
 
-export const FINANCE_1 = {
+export const FINANCE_1: TestAccount = {
   email: 'finance1@nxtwave.co.in',
   label: 'Finance User 1',
   designation: 'Finance',
 }
 
-export const FINANCE_2 = {
+export const FINANCE_2: TestAccount = {
   email: 'finance2@nxtwave.co.in',
   label: 'Finance User 2',
   designation: 'Finance',

@@ -50,17 +50,16 @@ export const claimSubmissionSchema = z.object({
   claimDate: claimDateSchema,
   workLocation: z.string().trim().min(1, 'Work location is required.'),
   ownVehicleUsed: z.boolean().optional(),
+  hasIntercityTravel: z.boolean().optional(),
+  hasIntracityTravel: z.boolean().optional(),
+  intercityOwnVehicleUsed: z.boolean().optional(),
+  intracityOwnVehicleUsed: z.boolean().optional(),
   vehicleType: optionalNonEmptyStringField(),
-  transportType: optionalNonEmptyStringField(),
   outstationStateId: optionalNonEmptyStringField(),
   outstationCityId: optionalNonEmptyStringField(),
   fromCityId: optionalNonEmptyStringField(),
   toCityId: optionalNonEmptyStringField(),
   kmTravelled: z.coerce.number().optional(),
-  taxiAmount: z.coerce
-    .number()
-    .min(0, 'Taxi amount cannot be negative.')
-    .optional(),
   foodWithPrincipalsAmount: z.coerce
     .number()
     .min(0, 'Food with principals amount cannot be negative.')
@@ -68,13 +67,13 @@ export const claimSubmissionSchema = z.object({
 })
 
 export const myClaimsFiltersSchema = z.object({
-  claimStatus: z.string().trim().max(100).optional(),
+  claimStatus: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.string().trim().uuid().optional()
+  ),
   workLocation: z.preprocess(
     (val) => (val === '' ? undefined : val),
     z.string().trim().max(100).optional()
   ),
   claimDate: optionalDateField('Claim date'),
 })
-
-export type ClaimSubmissionInput = z.infer<typeof claimSubmissionSchema>
-export type MyClaimsFiltersInput = z.infer<typeof myClaimsFiltersSchema>

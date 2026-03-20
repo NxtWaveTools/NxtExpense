@@ -2,11 +2,7 @@ import { z } from 'zod'
 
 export const adminRollbackSchema = z.object({
   claimId: z.string().uuid('Invalid claim identifier.'),
-  reason: z
-    .string()
-    .trim()
-    .min(1, 'Rollback reason is required.')
-    .max(500, 'Rollback reason cannot exceed 500 characters.'),
+  reason: z.string().trim().min(1, 'Rollback reason is required.'),
   confirmation: z.literal('CONFIRM', 'Secondary confirmation is required.'),
 })
 
@@ -21,11 +17,7 @@ export const adminReassignApproverSchema = z.object({
   approvalLevel1: adminEmailSchema,
   approvalLevel2: adminEmailSchema,
   approvalLevel3: adminEmailSchema,
-  reason: z
-    .string()
-    .trim()
-    .min(1, 'Reassignment reason is required.')
-    .max(500, 'Reassignment reason cannot exceed 500 characters.'),
+  reason: z.string().trim().min(1, 'Reassignment reason is required.'),
   confirmation: z.literal('CONFIRM', 'Secondary confirmation is required.'),
 })
 
@@ -45,13 +37,3 @@ export const adminUpdateVehicleRatesSchema = z.object({
   intercityRatePerKm: z.number().min(0, 'Rate must be non-negative.'),
   maxKmRoundTrip: z.number().int().min(0, 'KM limit must be non-negative.'),
 })
-
-export type AdminRollbackInput = z.infer<typeof adminRollbackSchema>
-export type AdminReassignApproverInput = z.infer<
-  typeof adminReassignApproverSchema
->
-export type AdminToggleActiveInput = z.infer<typeof adminToggleActiveSchema>
-export type AdminUpdateRateInput = z.infer<typeof adminUpdateRateSchema>
-export type AdminUpdateVehicleRatesInput = z.infer<
-  typeof adminUpdateVehicleRatesSchema
->

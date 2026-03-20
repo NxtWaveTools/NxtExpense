@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // Admin summary stats
 // ────────────────────────────────────────────────────────────
 
-export type AdminSummary = {
+type AdminSummary = {
   totalEmployees: number
   totalClaims: number
   pendingClaims: number

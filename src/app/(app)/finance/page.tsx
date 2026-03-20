@@ -15,10 +15,12 @@ import {
   getFinanceQueueAction,
 } from '@/features/finance/actions'
 import { getFinanceFilterOptions } from '@/features/finance/queries'
+import { getFinanceQueueAnalytics } from '@/features/finance/queries/analytics'
 import {
   addFinanceFiltersToParams,
   normalizeFinanceFilters,
 } from '@/features/finance/utils/filters'
+import { ClaimAnalyticsCards } from '@/components/ui/claim-analytics-cards'
 import { FinanceFiltersBar } from '@/features/finance/components/finance-filters-bar'
 import { FinanceQueue } from '@/features/finance/components/finance-queue'
 import { FinanceHistoryList } from '@/features/finance/components/finance-history-list'
@@ -44,11 +46,6 @@ type FinancePageProps = {
     dateFilterField?: string
     dateFrom?: string
     dateTo?: string
-    claimDate?: string
-    claimDateFrom?: string
-    claimDateTo?: string
-    actionDateFrom?: string
-    actionDateTo?: string
   }>
 }
 
@@ -63,31 +60,6 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
   const resolvedSearch = await searchParams
 
-  const legacyClaimDateFrom =
-    resolvedSearch?.claimDateFrom ?? resolvedSearch?.claimDate
-  const legacyClaimDateTo =
-    resolvedSearch?.claimDateTo ?? resolvedSearch?.claimDate
-  const legacyFinanceApprovedDateFrom = resolvedSearch?.actionDateFrom
-  const legacyFinanceApprovedDateTo = resolvedSearch?.actionDateTo
-
-  const dateFilterField =
-    resolvedSearch?.dateFilterField ??
-    (legacyFinanceApprovedDateFrom || legacyFinanceApprovedDateTo
-      ? 'finance_approved_date'
-      : 'claim_date')
-
-  const dateFrom =
-    resolvedSearch?.dateFrom ??
-    (dateFilterField === 'finance_approved_date'
-      ? legacyFinanceApprovedDateFrom
-      : legacyClaimDateFrom)
-
-  const dateTo =
-    resolvedSearch?.dateTo ??
-    (dateFilterField === 'finance_approved_date'
-      ? legacyFinanceApprovedDateTo
-      : legacyClaimDateTo)
-
   const rawFilters = {
     employeeName: resolvedSearch?.employeeName,
     claimNumber: resolvedSearch?.claimNumber,
@@ -96,9 +68,9 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     claimStatus: resolvedSearch?.claimStatus,
     workLocation: resolvedSearch?.workLocation,
     actionFilter: resolvedSearch?.actionFilter,
-    dateFilterField,
-    dateFrom,
-    dateTo,
+    dateFilterField: resolvedSearch?.dateFilterField,
+    dateFrom: resolvedSearch?.dateFrom,
+    dateTo: resolvedSearch?.dateTo,
   }
 
   const normalizedFilters = (() => {
@@ -116,10 +88,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
     hodApproverEmployeeId: normalizedFilters.hodApproverEmployeeId ?? undefined,
     claimStatus: normalizedFilters.claimStatus ?? undefined,
     workLocation: normalizedFilters.workLocation ?? undefined,
-    actionFilter:
-      normalizedFilters.actionFilter !== 'all'
-        ? normalizedFilters.actionFilter
-        : undefined,
+    actionFilter: normalizedFilters.actionFilter ?? undefined,
     dateFilterField:
       normalizedFilters.dateFilterField !== 'claim_date'
         ? normalizedFilters.dateFilterField
@@ -160,10 +129,11 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
   const paginationQuery = Object.fromEntries(canonicalParams.entries())
 
-  const [queue, history, filterOptions] = await Promise.all([
+  const [queue, history, filterOptions, analytics] = await Promise.all([
     getFinanceQueueAction(queueCursor, 10, normalizedFilterParams),
     getFinanceHistoryAction(historyCursor, 10, normalizedFilterParams),
     getFinanceFilterOptions(supabase),
+    getFinanceQueueAnalytics(supabase, normalizedFilters),
   ])
 
   const queuePagination = buildCursorNavigationLinks({
@@ -214,6 +184,34 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
               options={filterOptions}
               exportCurrentPageHref={exportCurrentPageHref}
               exportAllHref={exportAllHref}
+            />
+            <ClaimAnalyticsCards
+              cards={[
+                {
+                  label: 'Total Claims',
+                  count: analytics.total.count,
+                  amount: analytics.total.amount,
+                  tone: 'neutral',
+                },
+                {
+                  label: 'Pending Finance Queue',
+                  count: analytics.pendingFinanceQueue.count,
+                  amount: analytics.pendingFinanceQueue.amount,
+                  tone: 'finance',
+                },
+                {
+                  label: 'Payment Issued',
+                  count: analytics.approved.count,
+                  amount: analytics.approved.amount,
+                  tone: 'approved',
+                },
+                {
+                  label: 'Rejected',
+                  count: analytics.rejected.count,
+                  amount: analytics.rejected.amount,
+                  tone: 'rejected',
+                },
+              ]}
             />
             <FinanceQueue queue={queue} pagination={queuePagination} />
             <FinanceHistoryList

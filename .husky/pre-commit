@@ -3,7 +3,7 @@ npm run lint
 
 # lint-staged requires a valid HEAD for stashing; skip only before first commit.
 if git rev-parse --verify HEAD >/dev/null 2>&1; then
-	npx lint-staged
+	npm run lint:staged
 else
 	echo "Skipping lint-staged: no commits yet."
 fi

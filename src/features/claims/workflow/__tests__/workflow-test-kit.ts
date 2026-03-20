@@ -4,8 +4,8 @@ export type WorkflowStatus =
   | 'REJECTED'
   | 'APPROVED'
 
-export type ApprovalAction = 'approved' | 'rejected'
-export type FinanceAction = 'issued' | 'finance_rejected'
+type ApprovalAction = 'approved' | 'rejected'
+type FinanceAction = 'issued' | 'finance_rejected'
 
 export type WorkflowHistoryEntry = {
   actorEmail: string
@@ -26,7 +26,7 @@ export type WorkflowClaimState = {
   isSuperseded: boolean
 }
 
-export type WorkflowConfig = {
+type WorkflowConfig = {
   submitterEmail: string
   level1ApproverEmail: string | null
   level3ApproverEmail: string | null
@@ -54,7 +54,7 @@ export const FINANCE_APPROVER_EMAILS = new Set([
   'finance2@nxtwave.co.in',
 ])
 
-export const WORKFLOW_CONFIG_BY_SUBMITTER: Record<string, WorkflowConfig> = {
+const WORKFLOW_CONFIG_BY_SUBMITTER: Record<string, WorkflowConfig> = {
   'yohan.mutluri@nxtwave.co.in': {
     submitterEmail: 'yohan.mutluri@nxtwave.co.in',
     level1ApproverEmail: 'nagaraju.madugula@nxtwave.co.in',

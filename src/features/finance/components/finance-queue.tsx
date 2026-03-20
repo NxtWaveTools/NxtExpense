@@ -4,16 +4,22 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-import type { ClaimAvailableAction } from '@/features/claims/types'
-import type {
-  FinanceActionType,
-  PaginatedFinanceQueue,
-} from '@/features/finance/types'
+import type { PaginatedFinanceQueue } from '@/features/finance/types'
+import { bulkFinanceClaimsAction } from '@/features/finance/actions'
 import {
-  bulkFinanceClaimsAction,
-  submitFinanceAction,
-} from '@/features/finance/actions'
+  buildFinanceActionIntents,
+  getFinanceSuccessLabel,
+  supportsFinanceIntent,
+  type FinanceActionIntent,
+} from '@/features/finance/utils/action-intents'
 import { CursorPaginationControls } from '@/components/ui/cursor-pagination-controls'
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_CLASS,
+  DATA_TABLE_HEAD_ROW_CLASS,
+  DATA_TABLE_SCROLL_WRAPPER_CLASS,
+  getDataTableHeadCellClass,
+} from '@/components/ui/data-table-tokens'
 import { FinanceClaimRow } from '@/features/finance/components/finance-claim-row'
 import { FinanceQueueToolbar } from '@/features/finance/components/finance-queue-toolbar'
 
@@ -30,48 +36,44 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [notes, setNotes] = useState('')
-  const [allowResubmit, setAllowResubmit] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [processingClaimId, setProcessingClaimId] = useState<string | null>(
-    null
-  )
-  const [pendingBulkAction, setPendingBulkAction] =
-    useState<FinanceActionType | null>(null)
+  const [processingAction, setProcessingAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const selectableClaimIds = useMemo(
     () =>
       queue.data
-        .filter((item) =>
-          item.availableActions.some(
-            (action) =>
-              action.action === 'issued' || action.action === 'finance_rejected'
-          )
-        )
+        .filter((item) => item.availableActions.length > 0)
         .map((item) => item.claim.id),
     [queue.data]
   )
 
-  const bulkActions = useMemo(() => {
-    const actions = new Map<FinanceActionType, string>()
+  const bulkActionIntents = useMemo(() => {
+    const selectedSet = new Set(selectedIds)
+    const selectedItems = queue.data.filter((item) =>
+      selectedSet.has(item.claim.id)
+    )
+    const sourceItems = selectedItems.length > 0 ? selectedItems : queue.data
+    const intents = new Map<string, FinanceActionIntent>()
 
-    queue.data.forEach((item) => {
-      item.availableActions.forEach((action) => {
-        if (
-          action.action === 'issued' ||
-          action.action === 'finance_rejected'
-        ) {
-          actions.set(action.action, `${action.display_label} Selected`)
+    for (const item of sourceItems) {
+      for (const action of item.availableActions) {
+        for (const intent of buildFinanceActionIntents(action)) {
+          if (!intents.has(intent.key)) {
+            intents.set(intent.key, intent)
+          }
         }
-      })
-    })
+      }
+    }
 
-    return Array.from(actions.entries()).map(([action, label]) => ({
-      action,
-      label,
-    }))
-  }, [queue.data])
+    return Array.from(intents.values())
+  }, [queue.data, selectedIds])
+
+  const bulkActionIntentMap = useMemo(
+    () => new Map(bulkActionIntents.map((intent) => [intent.key, intent])),
+    [bulkActionIntents]
+  )
 
   const allSelected =
     selectableClaimIds.length > 0 &&
@@ -81,6 +83,9 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
   function toggleClaim(claimId: string, checked: boolean) {
     setSelectedIds((current) => {
       if (checked) {
+        if (current.includes(claimId)) {
+          return current
+        }
         return [...current, claimId]
       }
       return current.filter((id) => id !== claimId)
@@ -91,22 +96,42 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
     setSelectedIds(checked ? selectableClaimIds : [])
   }
 
-  async function handleBulkAction(action: FinanceActionType) {
+  async function handleBulkAction(intent: FinanceActionIntent) {
     if (selectedIds.length === 0) {
       return
     }
 
+    const selectedSet = new Set(selectedIds)
+    const selectedItems = queue.data.filter((item) =>
+      selectedSet.has(item.claim.id)
+    )
+    const eligibleIds = selectedItems
+      .filter((item) => supportsFinanceIntent(item, intent))
+      .map((item) => item.claim.id)
+
+    if (eligibleIds.length === 0) {
+      toast.info(
+        'Select at least one claim with the selected action available.'
+      )
+      return
+    }
+
+    if (eligibleIds.length < selectedIds.length) {
+      toast.info(
+        'Some selected claims do not support this action and were skipped.'
+      )
+    }
+
     setIsSubmitting(true)
-    setProcessingClaimId(null)
-    setPendingBulkAction(action)
+    setProcessingAction(intent.key)
     setError(null)
 
     try {
       const result = await bulkFinanceClaimsAction({
-        claimIds: selectedIds,
-        action,
+        claimIds: eligibleIds,
+        action: intent.actionCode,
         notes,
-        allowResubmit: action === 'finance_rejected' ? allowResubmit : false,
+        allowResubmit: intent.allowResubmit ? true : undefined,
       })
 
       if (!result.ok) {
@@ -115,7 +140,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
         return
       }
 
-      toast.success('Bulk finance action completed.')
+      toast.success(getFinanceSuccessLabel(intent, eligibleIds.length))
       setSelectedIds([])
       router.refresh()
     } catch {
@@ -124,56 +149,13 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
       toast.error(message)
     } finally {
       setIsSubmitting(false)
-      setPendingBulkAction(null)
-    }
-  }
-
-  async function handleSingleAction(
-    claimId: string,
-    availableAction: ClaimAvailableAction
-  ) {
-    if (
-      availableAction.action !== 'issued' &&
-      availableAction.action !== 'finance_rejected'
-    ) {
-      setError('Unsupported finance action from workflow configuration.')
-      return
-    }
-
-    setIsSubmitting(true)
-    setProcessingClaimId(claimId)
-    setError(null)
-
-    try {
-      const result = await submitFinanceAction({
-        claimId,
-        action: availableAction.action,
-        notes,
-        allowResubmit:
-          availableAction.action === 'finance_rejected' ? allowResubmit : false,
-      })
-
-      if (!result.ok) {
-        setError(result.error)
-        toast.error(result.error ?? 'Unable to complete finance action.')
-        return
-      }
-
-      toast.success(`${availableAction.display_label} completed successfully.`)
-      router.refresh()
-    } catch {
-      const message = 'Unexpected error while processing finance action.'
-      setError(message)
-      toast.error(message)
-    } finally {
-      setIsSubmitting(false)
-      setProcessingClaimId(null)
+      setProcessingAction(null)
     }
   }
 
   if (queue.data.length === 0) {
     return (
-      <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+      <section className="rounded-lg border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Finance Queue</h2>
         <p className="mt-2 text-sm text-foreground/70">
           No claims are waiting for finance action.
@@ -183,7 +165,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-surface p-6">
       <h2 className="text-lg font-semibold">Finance Queue</h2>
 
       <CursorPaginationControls
@@ -200,7 +182,9 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
       ) : null}
 
       <label className="mt-3 block space-y-2 text-sm">
-        <span className="text-foreground/80">Notes</span>
+        <span className="text-foreground/80">
+          Notes for the selected workflow action
+        </span>
         <textarea
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
@@ -208,17 +192,9 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
         />
       </label>
 
-      <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
-        <input
-          type="checkbox"
-          checked={allowResubmit}
-          onChange={(e) => setAllowResubmit(e.target.checked)}
-          className="h-4 w-4 rounded"
-        />
-        <span className="text-amber-700 dark:text-amber-400">
-          Allow employee to raise a new claim (applies to Finance Reject only)
-        </span>
-      </label>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Select one or more claims, then use the top action buttons.
+      </p>
 
       <div className="mt-4">
         <FinanceQueueToolbar
@@ -226,38 +202,47 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
           allSelected={allSelected}
           partiallySelected={partiallySelected}
           totalCount={selectableClaimIds.length}
-          bulkActions={bulkActions}
+          bulkActions={bulkActionIntents.map((intent) => ({
+            key: intent.key,
+            label: intent.label,
+          }))}
           onToggleSelectAll={toggleSelectAll}
-          onBulkAction={handleBulkAction}
+          onRunBulkAction={(actionKey) => {
+            const intent = bulkActionIntentMap.get(actionKey)
+            if (!intent) {
+              toast.error('Selected workflow action is unavailable.')
+              return
+            }
+
+            void handleBulkAction(intent)
+          }}
           disabled={isSubmitting}
-          processingAction={pendingBulkAction}
+          processingAction={processingAction}
         />
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-185 border-collapse text-sm">
+        <div className={DATA_TABLE_SCROLL_WRAPPER_CLASS}>
+          <table className={`${DATA_TABLE_CLASS} min-w-185 border-collapse`}>
             <thead>
-              <tr className="border-b border-border text-left text-foreground/70">
-                <th className="px-3 py-2 font-medium">Select</th>
-                <th className="px-3 py-2 font-medium whitespace-nowrap">
+              <tr className={DATA_TABLE_HEAD_ROW_CLASS}>
+                <th className={getDataTableHeadCellClass()}>Select</th>
+                <th className={getDataTableHeadCellClass({ nowrap: true })}>
                   Claim ID
                 </th>
-                <th className="px-3 py-2 font-medium">Employee</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Location</th>
-                <th className="px-3 py-2 font-medium">Amount</th>
+                <th className={getDataTableHeadCellClass()}>Employee</th>
+                <th className={getDataTableHeadCellClass()}>Date</th>
+                <th className={getDataTableHeadCellClass()}>Location</th>
+                <th className={getDataTableHeadCellClass()}>Amount</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className={DATA_TABLE_BODY_CLASS}>
               {queue.data.map((item) => (
                 <FinanceClaimRow
                   key={item.claim.id}
                   item={item}
                   checked={selectedSet.has(item.claim.id)}
-                  disabled={isSubmitting && processingClaimId === item.claim.id}
+                  disabled={isSubmitting}
                   selectable={selectableClaimIds.includes(item.claim.id)}
-                  isProcessingRow={processingClaimId === item.claim.id}
                   onToggle={toggleClaim}
-                  onRunAction={handleSingleAction}
                 />
               ))}
             </tbody>

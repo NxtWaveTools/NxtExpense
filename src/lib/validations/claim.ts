@@ -6,11 +6,6 @@ import {
   toISODate,
 } from '@/lib/utils/date'
 
-export const workLocationSchema = z
-  .string()
-  .min(1, 'Work location is required.')
-export const vehicleTypeSchema = z.string().min(1, 'Vehicle type is required.')
-
 export const claimDateSchema = z
   .string()
   .trim()
@@ -43,7 +38,3 @@ export const claimDateSchema = z
       return z.NEVER
     }
   })
-
-export type WorkLocation = z.infer<typeof workLocationSchema>
-export type VehicleType = z.infer<typeof vehicleTypeSchema>
-export type ParsedClaimDate = z.infer<typeof claimDateSchema>

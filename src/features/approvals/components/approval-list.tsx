@@ -1,15 +1,28 @@
 'use client'
 
-import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-import { formatDate } from '@/lib/utils/date'
+import {
+  DATA_TABLE_HEADER_BAR_CLASS,
+  DATA_TABLE_PAGINATION_SLOT_CLASS,
+  DATA_TABLE_SECTION_CLASS,
+} from '@/components/ui/data-table-tokens'
+import { submitBulkApprovalAction } from '@/features/approvals/actions'
+import { ApprovalListTable } from '@/features/approvals/components/approval-list-table'
+import { ApprovalListToolbar } from '@/features/approvals/components/approval-list-toolbar'
 import { CursorPaginationControls } from '@/components/ui/cursor-pagination-controls'
 
-import { submitBulkApprovalAction } from '@/features/approvals/actions'
-import type { PaginatedPendingApprovals } from '@/features/approvals/types'
+import type {
+  PendingApproval,
+  PaginatedPendingApprovals,
+} from '@/features/approvals/types'
+import type { ClaimAvailableAction } from '@/features/claims/types'
+import {
+  getWorkflowActionAllowReclaimLabel,
+  getWorkflowActionCtaLabel,
+} from '@/lib/utils/workflow-action-labels'
 
 type ApprovalListPagination = {
   backHref: string | null
@@ -22,214 +35,258 @@ type ApprovalListProps = {
   pagination: ApprovalListPagination
 }
 
-export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
-  const router = useRouter()
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [notes, setNotes] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pendingBulkAction, setPendingBulkAction] = useState<
-    'approved' | 'rejected' | null
-  >(null)
+type ApprovalActionIntent = {
+  key: string
+  actionCode: string
+  label: string
+  allowResubmit: boolean
+}
 
-  const selectableIds = useMemo(
-    () =>
-      approvals.data
-        .filter((row) =>
-          row.availableActions.some(
-            (action) =>
-              action.action === 'approved' || action.action === 'rejected'
-          )
-        )
-        .map((row) => row.claim.id),
-    [approvals.data]
-  )
+function getActionIntentKey(
+  actionCode: string,
+  allowResubmit: boolean
+): string {
+  return `${actionCode}:${allowResubmit ? 'allow_resubmit' : 'default'}`
+}
 
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
-  const allSelected =
-    selectableIds.length > 0 && selectedIds.length === selectableIds.length
-  const partiallySelected = selectedIds.length > 0 && !allSelected
+function toActionIntents(action: ClaimAvailableAction): ApprovalActionIntent[] {
+  const intents: ApprovalActionIntent[] = [
+    {
+      key: getActionIntentKey(action.action, false),
+      actionCode: action.action,
+      label: getWorkflowActionCtaLabel(action),
+      allowResubmit: false,
+    },
+  ]
 
-  function toggleSelectAll(checked: boolean) {
-    setSelectedIds(checked ? selectableIds : [])
-  }
-
-  function toggleSelection(claimId: string, checked: boolean) {
-    setSelectedIds((current) => {
-      if (checked) {
-        return current.includes(claimId) ? current : [...current, claimId]
-      }
-
-      return current.filter((id) => id !== claimId)
+  if (action.supports_allow_resubmit) {
+    intents.push({
+      key: getActionIntentKey(action.action, true),
+      actionCode: action.action,
+      label: getWorkflowActionAllowReclaimLabel(action),
+      allowResubmit: true,
     })
   }
 
-  async function runBulkAction(action: 'approved' | 'rejected') {
-    if (selectedIds.length === 0) {
-      return
+  return intents
+}
+
+function supportsIntent(item: PendingApproval, intent: ApprovalActionIntent) {
+  return item.availableActions.some(
+    (action) =>
+      action.action === intent.actionCode &&
+      (!intent.allowResubmit || action.supports_allow_resubmit)
+  )
+}
+
+export function ApprovalList({ approvals, pagination }: ApprovalListProps) {
+  const items = approvals.data
+  const router = useRouter()
+
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [notes, setNotes] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [processingClaimId, setProcessingClaimId] = useState<string | null>(
+    null
+  )
+  const [processingAction, setProcessingAction] = useState<string | null>(null)
+
+  const allSelectable = useMemo(
+    () => items.filter((i: PendingApproval) => i.availableActions.length > 0),
+    [items]
+  )
+
+  const bulkActionIntents = useMemo(() => {
+    const selectedItems = items.filter((item) => selected.has(item.claim.id))
+    const sourceItems = selectedItems.length > 0 ? selectedItems : allSelectable
+    const intents = new Map<string, ApprovalActionIntent>()
+
+    for (const item of sourceItems) {
+      for (const action of item.availableActions) {
+        for (const intent of toActionIntents(action)) {
+          if (!intents.has(intent.key)) {
+            intents.set(intent.key, intent)
+          }
+        }
+      }
     }
 
-    setIsSubmitting(true)
-    setPendingBulkAction(action)
+    return Array.from(intents.values())
+  }, [allSelectable, items, selected])
 
-    try {
-      const result = await submitBulkApprovalAction({
-        claimIds: selectedIds,
-        action,
-        notes,
-        allowResubmit: false,
-      })
+  const bulkActionIntentMap = useMemo(
+    () => new Map(bulkActionIntents.map((intent) => [intent.key, intent])),
+    [bulkActionIntents]
+  )
 
-      if (result.succeeded > 0) {
-        toast.success(
-          `${result.succeeded} claim(s) ${
-            action === 'approved' ? 'approved' : 'rejected'
-          } successfully.`
-        )
-      }
+  const allSelected =
+    allSelectable.length > 0 && selected.size === allSelectable.length
 
-      if (result.failed > 0) {
-        toast.error(result.error ?? `${result.failed} claim(s) failed.`)
-      }
-
-      if (result.ok) {
-        setSelectedIds([])
-        setNotes('')
-      }
-
-      router.refresh()
-    } catch {
-      toast.error('Unexpected error while processing bulk approval action.')
-    } finally {
-      setIsSubmitting(false)
-      setPendingBulkAction(null)
+  function toggleSelectAll(checked: boolean) {
+    if (checked) {
+      setSelected(
+        new Set(allSelectable.map((i: PendingApproval) => i.claim.id))
+      )
+    } else {
+      setSelected(new Set())
     }
   }
 
-  if (approvals.data.length === 0) {
+  function toggleOne(claimId: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        next.add(claimId)
+      } else {
+        next.delete(claimId)
+      }
+      return next
+    })
+  }
+
+  async function runSingleAction(
+    claimId: string,
+    action: ClaimAvailableAction,
+    allowResubmit: boolean
+  ) {
+    setIsProcessing(true)
+    setProcessingClaimId(claimId)
+
+    const shouldAllowResubmit =
+      allowResubmit && action.supports_allow_resubmit === true
+    setProcessingAction(getActionIntentKey(action.action, shouldAllowResubmit))
+
+    try {
+      const result = await submitBulkApprovalAction({
+        claimIds: [claimId],
+        action: action.action,
+        notes,
+        allowResubmit: shouldAllowResubmit ? true : undefined,
+      })
+
+      if (!result.ok) {
+        toast.error(result.error ?? 'Action failed.')
+      } else {
+        const successLabel = shouldAllowResubmit
+          ? `${getWorkflowActionAllowReclaimLabel(action)} applied.`
+          : `${getWorkflowActionCtaLabel(action)} applied.`
+        toast.success(successLabel)
+        router.refresh()
+      }
+    } catch {
+      toast.error('Unexpected error.')
+    } finally {
+      setIsProcessing(false)
+      setProcessingClaimId(null)
+      setProcessingAction(null)
+    }
+  }
+
+  async function runBulkAction(intent: ApprovalActionIntent) {
+    const selectedIds = Array.from(selected)
+    const selectedItems = items.filter((item) => selected.has(item.claim.id))
+    const eligibleIds = selectedItems
+      .filter((item) => supportsIntent(item, intent))
+      .map((item) => item.claim.id)
+
+    const ids = selectedIds.length > 0 ? eligibleIds : []
+    if (ids.length === 0) {
+      toast.info(
+        'Select at least one claim with the selected action available.'
+      )
+      return
+    }
+
+    if (eligibleIds.length < selectedIds.length) {
+      toast.info(
+        'Some selected claims do not support this action and were skipped.'
+      )
+    }
+
+    setIsProcessing(true)
+    setProcessingAction(intent.key)
+
+    try {
+      const result = await submitBulkApprovalAction({
+        claimIds: ids,
+        action: intent.actionCode,
+        notes,
+        allowResubmit: intent.allowResubmit ? true : undefined,
+      })
+
+      if (!result.ok) {
+        toast.error(result.error ?? 'Bulk action failed.')
+      } else {
+        toast.success(`${intent.label} completed.`)
+        setSelected(new Set())
+        router.refresh()
+      }
+    } catch {
+      toast.error('Unexpected error.')
+    } finally {
+      setIsProcessing(false)
+      setProcessingAction(null)
+    }
+  }
+
+  if (items.length === 0) {
     return (
-      <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+      <section className={`${DATA_TABLE_SECTION_CLASS} p-8 text-center`}>
         <h2 className="text-lg font-semibold">Pending Approvals</h2>
-        <p className="mt-2 text-sm text-foreground/70">
-          No pending approvals at your level.
+        <p className="mt-2 text-sm text-muted-foreground">
+          No pending claims require your approval right now.
         </p>
       </section>
     )
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold">Pending Approvals</h2>
+    <section className={DATA_TABLE_SECTION_CLASS}>
+      <div className={DATA_TABLE_HEADER_BAR_CLASS}>
+        <h2 className="text-lg font-semibold">Pending Approvals</h2>
+      </div>
 
-      <CursorPaginationControls
-        backHref={pagination.backHref}
-        nextHref={pagination.nextHref}
-        pageNumber={pagination.pageNumber}
+      <ApprovalListToolbar
+        allSelected={allSelected}
+        selectedCount={selected.size}
+        selectableCount={allSelectable.length}
+        notes={notes}
+        isProcessing={isProcessing}
+        processingAction={processingAction}
+        bulkActions={bulkActionIntents.map((intent) => ({
+          key: intent.key,
+          label: intent.label,
+        }))}
+        onToggleSelectAll={toggleSelectAll}
+        onNotesChange={setNotes}
+        onRunBulkAction={(actionKey) => {
+          const intent = bulkActionIntentMap.get(actionKey)
+          if (!intent) {
+            toast.error('Selected workflow action is unavailable.')
+            return
+          }
+
+          void runBulkAction(intent)
+        }}
       />
 
-      <div className="rounded-lg border border-border bg-background p-3">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="inline-flex items-center gap-2 font-medium text-foreground/80">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              ref={(node) => {
-                if (node) {
-                  node.indeterminate = partiallySelected
-                }
-              }}
-              onChange={(event) => toggleSelectAll(event.target.checked)}
-              disabled={isSubmitting || selectableIds.length === 0}
-            />
-            Select All ({selectedIds.length}/{selectableIds.length})
-          </label>
-
-          <button
-            type="button"
-            onClick={() => runBulkAction('approved')}
-            disabled={isSubmitting || selectedIds.length === 0}
-            className="rounded-lg bg-foreground px-3 py-2 text-xs font-medium text-background disabled:opacity-60"
-          >
-            {isSubmitting && pendingBulkAction === 'approved'
-              ? 'Approving...'
-              : 'Bulk Approve'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => runBulkAction('rejected')}
-            disabled={isSubmitting || selectedIds.length === 0}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium disabled:opacity-60"
-          >
-            {isSubmitting && pendingBulkAction === 'rejected'
-              ? 'Rejecting...'
-              : 'Bulk Reject'}
-          </button>
-        </div>
-
-        <label className="mt-3 block space-y-1 text-sm">
-          <span className="text-foreground/80">Notes</span>
-          <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            className="min-h-20 w-full rounded-lg border border-border bg-background px-3 py-2"
-          />
-        </label>
+      <div className={DATA_TABLE_PAGINATION_SLOT_CLASS}>
+        <CursorPaginationControls
+          backHref={pagination.backHref}
+          nextHref={pagination.nextHref}
+          pageNumber={pagination.pageNumber}
+        />
       </div>
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-175 border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-foreground/70">
-              <th className="px-3 py-2 font-medium">Select</th>
-              <th className="px-3 py-2 font-medium whitespace-nowrap">
-                Claim ID
-              </th>
-              <th className="px-3 py-2 font-medium">Employee</th>
-              <th className="px-3 py-2 font-medium">Role</th>
-              <th className="px-3 py-2 font-medium">Date</th>
-              <th className="px-3 py-2 font-medium">Location</th>
-              <th className="px-3 py-2 font-medium">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {approvals.data.map((row) => (
-              <tr key={row.claim.id} className="border-b border-border/70">
-                <td className="px-3 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedSet.has(row.claim.id)}
-                    disabled={
-                      isSubmitting || !selectableIds.includes(row.claim.id)
-                    }
-                    onChange={(event) =>
-                      toggleSelection(row.claim.id, event.target.checked)
-                    }
-                  />
-                </td>
-                <td className="px-3 py-3 font-medium whitespace-nowrap">
-                  <Link
-                    href={`/approvals/${row.claim.id}`}
-                    className="inline-block whitespace-nowrap underline decoration-border underline-offset-4 hover:decoration-foreground"
-                  >
-                    {row.claim.claim_number}
-                  </Link>
-                </td>
-                <td className="px-3 py-3">{row.owner.employee_name}</td>
-                <td className="px-3 py-3 text-xs text-foreground/70">
-                  {row.owner.designations?.designation_name ?? ''}
-                </td>
-                <td className="px-3 py-3">
-                  {formatDate(row.claim.claim_date)}
-                </td>
-                <td className="px-3 py-3">{row.claim.work_location}</td>
-                <td className="px-3 py-3">
-                  Rs. {Number(row.claim.total_amount).toFixed(2)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ApprovalListTable
+        approvals={approvals}
+        selected={selected}
+        isProcessing={isProcessing}
+        processingClaimId={processingClaimId}
+        processingAction={processingAction}
+        onToggleOne={toggleOne}
+        onRunSingleAction={runSingleAction}
+      />
     </section>
   )
 }

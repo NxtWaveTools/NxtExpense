@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
+import { getClaimAvailableActions } from '@/features/claims/queries'
 import type { FinanceFilters } from '@/features/finance/types'
 import {
   bulkFinanceActionSchema,
@@ -14,6 +15,10 @@ import {
   getFinanceHistoryPaginated,
   getFinanceQueuePaginated,
 } from '@/features/finance/queries'
+import {
+  getMaxNotesLength,
+  getMaxTextLengthValidationError,
+} from '@/lib/services/system-settings-service'
 
 type FinanceActionResult = {
   ok: boolean
@@ -42,7 +47,7 @@ async function getFinanceEmployeeContext() {
 
 export async function submitFinanceAction(payload: {
   claimId: string
-  action: 'issued' | 'finance_rejected'
+  action: string
   notes?: string
   allowResubmit?: boolean
 }): Promise<FinanceActionResult> {
@@ -56,15 +61,40 @@ export async function submitFinanceAction(payload: {
 
   try {
     const { supabase } = await getFinanceEmployeeContext()
+    const maxNotesLength = await getMaxNotesLength(supabase)
+    const notesValidationError = getMaxTextLengthValidationError(
+      parsed.data.notes,
+      maxNotesLength,
+      'Notes'
+    )
+
+    if (notesValidationError) {
+      return {
+        ok: false,
+        error: notesValidationError,
+      }
+    }
+
+    const availableActions = await getClaimAvailableActions(
+      supabase,
+      parsed.data.claimId
+    )
+    const canRunAction = availableActions.some(
+      (action) => action.action === parsed.data.action
+    )
+
+    if (!canRunAction) {
+      return {
+        ok: false,
+        error: 'This workflow action is not available for the claim state.',
+      }
+    }
 
     const { error } = await supabase.rpc('submit_finance_action_atomic', {
       p_claim_id: parsed.data.claimId,
       p_action: parsed.data.action,
       p_notes: parsed.data.notes ?? null,
-      p_allow_resubmit:
-        parsed.data.action === 'finance_rejected'
-          ? Boolean(parsed.data.allowResubmit)
-          : false,
+      p_allow_resubmit: Boolean(parsed.data.allowResubmit),
     })
 
     if (error) {
@@ -85,7 +115,7 @@ export async function submitFinanceAction(payload: {
 
 export async function bulkFinanceClaimsAction(payload: {
   claimIds: string[]
-  action: 'issued' | 'finance_rejected'
+  action: string
   notes?: string
   allowResubmit?: boolean
 }): Promise<FinanceActionResult> {
@@ -100,15 +130,40 @@ export async function bulkFinanceClaimsAction(payload: {
 
   try {
     const { supabase } = await getFinanceEmployeeContext()
+    const maxNotesLength = await getMaxNotesLength(supabase)
+    const notesValidationError = getMaxTextLengthValidationError(
+      parsed.data.notes,
+      maxNotesLength,
+      'Notes'
+    )
+
+    if (notesValidationError) {
+      return {
+        ok: false,
+        error: notesValidationError,
+      }
+    }
+
+    for (const claimId of parsed.data.claimIds) {
+      const availableActions = await getClaimAvailableActions(supabase, claimId)
+      const canRunAction = availableActions.some(
+        (action) => action.action === parsed.data.action
+      )
+
+      if (!canRunAction) {
+        return {
+          ok: false,
+          error:
+            'One or more selected claims do not allow this workflow action.',
+        }
+      }
+    }
 
     const { error } = await supabase.rpc('bulk_finance_actions_atomic', {
       p_claim_ids: parsed.data.claimIds,
       p_action: parsed.data.action,
       p_notes: parsed.data.notes ?? null,
-      p_allow_resubmit:
-        parsed.data.action === 'finance_rejected'
-          ? Boolean(parsed.data.allowResubmit)
-          : false,
+      p_allow_resubmit: Boolean(parsed.data.allowResubmit),
     })
 
     if (error) {

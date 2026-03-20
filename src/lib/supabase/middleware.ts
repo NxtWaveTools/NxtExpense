@@ -74,7 +74,7 @@ function isStaleRefreshTokenError(error: unknown): boolean {
   )
 }
 
-export type RefreshedSession = {
+type RefreshedSession = {
   response: NextResponse
   user: User | null
   supabase: SupabaseClient
