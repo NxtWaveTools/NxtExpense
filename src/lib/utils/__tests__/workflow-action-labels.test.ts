@@ -27,7 +27,7 @@ describe('workflow action CTA labels', () => {
     ).toBe('Reject')
     expect(
       getWorkflowActionCtaLabel({ action: 'issued', display_label: 'Issued' })
-    ).toBe('Issue')
+    ).toBe('Approve')
   })
 
   it('falls back to normalized display label for unknown actions', () => {

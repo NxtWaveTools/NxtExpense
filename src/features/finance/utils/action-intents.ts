@@ -43,6 +43,60 @@ export function buildFinanceActionIntents(
   return intents
 }
 
+function isFinanceApproveAction(actionCode: string): boolean {
+  return actionCode === 'issued' || actionCode === 'finance_issued'
+}
+
+function isFinanceRejectAction(actionCode: string): boolean {
+  return actionCode === 'finance_rejected' || actionCode === 'rejected'
+}
+
+function getFinanceIntentSortRank(intent: FinanceActionIntent): number {
+  if (isFinanceApproveAction(intent.actionCode) && !intent.allowResubmit) {
+    return 1
+  }
+
+  if (isFinanceRejectAction(intent.actionCode) && !intent.allowResubmit) {
+    return 2
+  }
+
+  if (isFinanceRejectAction(intent.actionCode) && intent.allowResubmit) {
+    return 3
+  }
+
+  return 99
+}
+
+export function sortFinanceActionIntents(
+  intents: FinanceActionIntent[]
+): FinanceActionIntent[] {
+  return [...intents].sort((left, right) => {
+    const rankDifference =
+      getFinanceIntentSortRank(left) - getFinanceIntentSortRank(right)
+    if (rankDifference !== 0) {
+      return rankDifference
+    }
+
+    return left.label.localeCompare(right.label)
+  })
+}
+
+export function getFinanceActionToneClass(intent: FinanceActionIntent): string {
+  if (isFinanceApproveAction(intent.actionCode) && !intent.allowResubmit) {
+    return 'bg-emerald-600 hover:bg-emerald-700'
+  }
+
+  if (isFinanceRejectAction(intent.actionCode) && !intent.allowResubmit) {
+    return 'bg-rose-600 hover:bg-rose-700'
+  }
+
+  if (isFinanceRejectAction(intent.actionCode) && intent.allowResubmit) {
+    return 'bg-amber-600 hover:bg-amber-700'
+  }
+
+  return 'bg-sky-600 hover:bg-sky-700'
+}
+
 export function supportsFinanceIntent(
   item: Pick<FinanceQueueItem, 'availableActions'>,
   intent: FinanceActionIntent
