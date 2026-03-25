@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 type FinanceBulkActionOption = {
   key: string
   label: string
+  toneClass: string
 }
 
 type FinanceQueueToolbarProps = {
@@ -19,13 +20,6 @@ type FinanceQueueToolbarProps = {
   disabled: boolean
   processingAction: string | null
 }
-
-const TOOLBAR_ACTION_BUTTON_CLASSES = [
-  'bg-emerald-600 hover:bg-emerald-700',
-  'bg-rose-600 hover:bg-rose-700',
-  'bg-amber-600 hover:bg-amber-700',
-  'bg-sky-600 hover:bg-sky-700',
-] as const
 
 export function FinanceQueueToolbar({
   selectedCount,
@@ -64,19 +58,14 @@ export function FinanceQueueToolbar({
         </label>
 
         <div className="flex items-center gap-2">
-          {bulkActions.map((action, index) => {
-            const toneClass =
-              TOOLBAR_ACTION_BUTTON_CLASSES[
-                index % TOOLBAR_ACTION_BUTTON_CLASSES.length
-              ]
-
+          {bulkActions.map((action) => {
             return (
               <button
                 key={action.key}
                 type="button"
                 onClick={() => onRunBulkAction(action.key)}
                 disabled={disabled || selectedCount === 0}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-xs font-semibold text-white transition-all disabled:opacity-50 ${toneClass}`}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-xs font-semibold text-white transition-all disabled:opacity-50 ${action.toneClass}`}
               >
                 {processingAction === action.key ? (
                   <Loader2 className="size-3.5 animate-spin" />

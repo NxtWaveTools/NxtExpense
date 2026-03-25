@@ -8,9 +8,12 @@ import { toast } from 'sonner'
 import { submitFinanceAction } from '@/features/finance/actions'
 import type { ClaimAvailableAction } from '@/features/claims/types'
 import {
-  getWorkflowActionAllowReclaimLabel,
-  getWorkflowActionCtaLabel,
-} from '@/lib/utils/workflow-action-labels'
+  buildFinanceActionIntents,
+  getFinanceActionToneClass,
+  sortFinanceActionIntents,
+  type FinanceActionIntent,
+} from '@/features/finance/utils/action-intents'
+import { getWorkflowActionCtaLabel } from '@/lib/utils/workflow-action-labels'
 
 type FinanceActionsProps = {
   claimId: string
@@ -28,12 +31,17 @@ export function FinanceActions({
   const [pendingAction, setPendingAction] = useState<string | null>(null)
 
   const actions = useMemo(() => availableActions, [availableActions])
-
-  const BUTTON_TONES = [
-    'bg-emerald-600 hover:bg-emerald-700',
-    'bg-rose-600 hover:bg-rose-700',
-    'bg-sky-600 hover:bg-sky-700',
-  ] as const
+  const actionsByCode = useMemo(
+    () => new Map(actions.map((action) => [action.action, action])),
+    [actions]
+  )
+  const actionIntents = useMemo(
+    () =>
+      sortFinanceActionIntents(
+        actions.flatMap((action) => buildFinanceActionIntents(action))
+      ),
+    [actions]
+  )
 
   function getActionIntentKey(actionCode: string, allowResubmit: boolean) {
     return `${actionCode}:${allowResubmit ? 'allow_resubmit' : 'default'}`
@@ -41,14 +49,14 @@ export function FinanceActions({
 
   async function handleAction(
     action: ClaimAvailableAction,
-    allowResubmit = false
+    intent: FinanceActionIntent
   ) {
     const shouldAllowResubmit =
-      allowResubmit && action.supports_allow_resubmit === true
-    const intent = getActionIntentKey(action.action, shouldAllowResubmit)
+      intent.allowResubmit && action.supports_allow_resubmit === true
+    const intentKey = getActionIntentKey(action.action, shouldAllowResubmit)
 
     setIsSubmitting(true)
-    setPendingAction(intent)
+    setPendingAction(intentKey)
     setError(null)
 
     try {
@@ -65,10 +73,7 @@ export function FinanceActions({
         return
       }
 
-      const actionLabel = shouldAllowResubmit
-        ? getWorkflowActionAllowReclaimLabel(action)
-        : getWorkflowActionCtaLabel(action)
-      toast.success(`${actionLabel} submitted successfully.`)
+      toast.success(`${intent.label} submitted successfully.`)
       router.push('/finance')
     } catch {
       const message = 'Unexpected error while submitting finance action.'
@@ -109,16 +114,21 @@ export function FinanceActions({
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2.5">
-        {actions.map((action, index) => {
-          const intentKey = getActionIntentKey(action.action, false)
-          const toneClass = BUTTON_TONES[index % BUTTON_TONES.length]
+        {actionIntents.map((intent) => {
+          const action = actionsByCode.get(intent.actionCode)
+          if (!action) {
+            return null
+          }
+
+          const intentKey = intent.key
+          const toneClass = getFinanceActionToneClass(intent)
 
           return (
             <button
               key={intentKey}
               type="button"
               disabled={isSubmitting}
-              onClick={() => handleAction(action, false)}
+              onClick={() => handleAction(action, intent)}
               className={`inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-50 ${toneClass}`}
             >
               {isSubmitting && pendingAction === intentKey ? (
@@ -126,33 +136,10 @@ export function FinanceActions({
               ) : null}
               {isSubmitting && pendingAction === intentKey
                 ? 'Submitting...'
-                : getWorkflowActionCtaLabel(action)}
+                : intent.label}
             </button>
           )
         })}
-
-        {actions
-          .filter((action) => action.supports_allow_resubmit)
-          .map((action) => {
-            const intentKey = getActionIntentKey(action.action, true)
-
-            return (
-              <button
-                key={intentKey}
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => handleAction(action, true)}
-                className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-amber-700 disabled:opacity-50"
-              >
-                {isSubmitting && pendingAction === intentKey ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : null}
-                {isSubmitting && pendingAction === intentKey
-                  ? 'Submitting...'
-                  : getWorkflowActionAllowReclaimLabel(action)}
-              </button>
-            )
-          })}
       </div>
     </section>
   )

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { ClaimAvailableAction } from '@/features/claims/types'
 import {
   buildFinanceActionIntents,
+  sortFinanceActionIntents,
   getFinanceSuccessLabel,
   supportsFinanceIntent,
 } from '@/features/finance/utils/action-intents'
@@ -31,9 +32,22 @@ describe('finance action intents', () => {
     expect(intents[0]).toEqual({
       key: 'issued:default',
       actionCode: 'issued',
-      label: 'Issue',
+      label: 'Approve',
       allowResubmit: false,
     })
+  })
+
+  it('orders intents as approve, reject, then reject and allow reclaim', () => {
+    const combined = sortFinanceActionIntents([
+      ...buildFinanceActionIntents(REJECT_ACTION),
+      ...buildFinanceActionIntents(ISSUE_ACTION),
+    ])
+
+    expect(combined.map((intent) => intent.label)).toEqual([
+      'Approve',
+      'Reject',
+      'Reject & Allow Reclaim',
+    ])
   })
 
   it('builds default and allow-resubmit intents when action supports it', () => {
@@ -89,10 +103,10 @@ describe('finance action intents', () => {
     const defaultIntent = buildFinanceActionIntents(ISSUE_ACTION)[0]
 
     expect(getFinanceSuccessLabel(defaultIntent, 1)).toBe(
-      'Issue completed successfully.'
+      'Approve completed successfully.'
     )
     expect(getFinanceSuccessLabel(defaultIntent, 3)).toBe(
-      'Issue completed for 3 claims.'
+      'Approve completed for 3 claims.'
     )
   })
 })
