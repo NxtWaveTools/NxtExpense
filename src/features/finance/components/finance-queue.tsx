@@ -8,7 +8,9 @@ import type { PaginatedFinanceQueue } from '@/features/finance/types'
 import { bulkFinanceClaimsAction } from '@/features/finance/actions'
 import {
   buildFinanceActionIntents,
+  getFinanceActionToneClass,
   getFinanceSuccessLabel,
+  sortFinanceActionIntents,
   supportsFinanceIntent,
   type FinanceActionIntent,
 } from '@/features/finance/utils/action-intents'
@@ -67,7 +69,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
       }
     }
 
-    return Array.from(intents.values())
+    return sortFinanceActionIntents(Array.from(intents.values()))
   }, [queue.data, selectedIds])
 
   const bulkActionIntentMap = useMemo(
@@ -205,6 +207,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
           bulkActions={bulkActionIntents.map((intent) => ({
             key: intent.key,
             label: intent.label,
+            toneClass: getFinanceActionToneClass(intent),
           }))}
           onToggleSelectAll={toggleSelectAll}
           onRunBulkAction={(actionKey) => {
