@@ -38,6 +38,27 @@ const DEFAULT_FINANCE_FILTERS: FinanceFilters = {
 const FINANCE_OWNER_COLUMNS =
   'id, employee_id, employee_name, employee_email, designation_id, designations!designation_id(designation_name)'
 
+type FinanceOwnerRelationRow = Omit<FinanceOwner, 'designations'> & {
+  designations:
+    | FinanceOwner['designations']
+    | Array<NonNullable<FinanceOwner['designations']>>
+}
+
+type ExpenseClaimWithOwnerRow = Record<string, unknown> & {
+  employees: FinanceOwnerRelationRow | FinanceOwnerRelationRow[]
+}
+
+function normalizeFinanceOwner(owner: FinanceOwnerRelationRow): FinanceOwner {
+  const designation = Array.isArray(owner.designations)
+    ? (owner.designations[0] ?? null)
+    : (owner.designations ?? null)
+
+  return {
+    ...owner,
+    designations: designation,
+  }
+}
+
 export { getFinanceFilterOptions }
 
 export async function getFinanceQueuePaginated(
@@ -104,9 +125,7 @@ export async function getFinanceQueuePaginated(
     throw new Error(error.message)
   }
 
-  const rows = (data ?? []) as Array<
-    Record<string, unknown> & { employees: FinanceOwner | FinanceOwner[] }
-  >
+  const rows = (data ?? []) as Array<ExpenseClaimWithOwnerRow>
   const hasNextPage = rows.length > limit
   const pageData = hasNextPage ? rows.slice(0, limit) : rows
   const availableActionsByClaimId = await getClaimAvailableActionsByClaimIds(
@@ -115,9 +134,11 @@ export async function getFinanceQueuePaginated(
   )
 
   const mappedData = pageData.map((row) => {
-    const owner = Array.isArray(row.employees)
+    const ownerRelation = Array.isArray(row.employees)
       ? row.employees[0]
       : row.employees
+
+    const owner = ownerRelation ? normalizeFinanceOwner(ownerRelation) : null
 
     if (!owner) {
       throw new Error('Claim owner mapping not found.')
@@ -226,14 +247,19 @@ export async function getFinanceHistoryPaginated(
     .order('id', { ascending: false })
     .limit(limit + 1)
 
+  const actionDateFilterField = isFinanceActionDateFilterField(
+    filters.dateFilterField
+  )
+    ? filters.dateFilterField
+    : null
+
   const filterByFinanceActionDate =
-    isFinanceActionDateFilterField(filters.dateFilterField) &&
-    (filters.dateFrom || filters.dateTo)
+    actionDateFilterField !== null && (filters.dateFrom || filters.dateTo)
 
   if (filterByFinanceActionDate) {
     const dateFilterActions = await getFinanceActionCodesForDateFilter(
       supabase,
-      filters.dateFilterField
+      actionDateFilterField
     )
 
     if (dateFilterActions.length === 0) {
@@ -322,12 +348,13 @@ export async function getFinanceHistoryPaginated(
   }
 
   const claimMap = new Map<string, { claim: Claim; owner: FinanceOwner }>()
-  for (const row of (claimData ?? []) as Array<
-    Record<string, unknown> & { employees: FinanceOwner | FinanceOwner[] }
-  >) {
-    const owner = Array.isArray(row.employees)
+  for (const row of (claimData ?? []) as Array<ExpenseClaimWithOwnerRow>) {
+    const ownerRelation = Array.isArray(row.employees)
       ? row.employees[0]
       : row.employees
+
+    const owner = ownerRelation ? normalizeFinanceOwner(ownerRelation) : null
+
     if (!owner) {
       continue
     }
@@ -399,9 +426,14 @@ export async function getFinanceHistoryTotalCount(
     return 0
   }
 
+  const actionDateFilterField = isFinanceActionDateFilterField(
+    filters.dateFilterField
+  )
+    ? filters.dateFilterField
+    : null
+
   const filterByFinanceActionDate =
-    isFinanceActionDateFilterField(filters.dateFilterField) &&
-    (filters.dateFrom || filters.dateTo)
+    actionDateFilterField !== null && (filters.dateFrom || filters.dateTo)
 
   let query = supabase
     .from('finance_actions')
@@ -410,7 +442,7 @@ export async function getFinanceHistoryTotalCount(
   if (filterByFinanceActionDate) {
     const dateFilterActions = await getFinanceActionCodesForDateFilter(
       supabase,
-      filters.dateFilterField
+      actionDateFilterField
     )
 
     if (dateFilterActions.length === 0) {

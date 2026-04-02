@@ -249,14 +249,15 @@ export async function getFilteredClaimIdsForFinance(
     }
   }
 
-  const filterByFinanceActionDate =
+  if (
     isFinanceActionDateFilterField(filters.dateFilterField) &&
     (filters.dateFrom || filters.dateTo)
+  ) {
+    const dateFilterField = filters.dateFilterField
 
-  if (filterByFinanceActionDate) {
     const dateFilterStatusIds = await getDateFilterTargetStatusIds(
       supabase,
-      filters.dateFilterField
+      dateFilterField
     )
 
     if (dateFilterStatusIds.size === 0) {
@@ -269,7 +270,7 @@ export async function getFilteredClaimIdsForFinance(
 
     const dateFilterActions = await getFinanceActionCodesForDateFilter(
       supabase,
-      filters.dateFilterField,
+      dateFilterField,
       dateFilterStatusIds
     )
 
