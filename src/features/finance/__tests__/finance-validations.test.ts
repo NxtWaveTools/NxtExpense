@@ -57,4 +57,14 @@ describe('finance validation schemas', () => {
 
     expect(parsed.success).toBe(true)
   })
+
+  it('accepts submitted_at date filter values', () => {
+    const parsed = financeFiltersSchema.safeParse({
+      dateFilterField: 'submitted_at',
+      dateFrom: '07/03/2026',
+      dateTo: '08/03/2026',
+    })
+
+    expect(parsed.success).toBe(true)
+  })
 })

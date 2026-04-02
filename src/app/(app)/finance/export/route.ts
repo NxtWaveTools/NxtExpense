@@ -68,7 +68,7 @@ async function handleExportRequest(request: Request) {
 
     const csv = buildFinanceHistoryCsv(rows)
     const dateStamp = new Date().toISOString().slice(0, 10)
-    const filename = `finance-history-${mode}-${dateStamp}.csv`
+    const filename = `approved-history-${mode}-${dateStamp}.csv`
 
     return new Response(csv, {
       status: 200,

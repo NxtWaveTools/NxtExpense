@@ -38,6 +38,18 @@ describe('finance filter utilities', () => {
     })
   })
 
+  it('normalizes submitted_at date filter values', () => {
+    const normalized = normalizeFinanceFilters({
+      dateFilterField: 'submitted_at',
+      dateFrom: '07/03/2026',
+      dateTo: '08/03/2026',
+    })
+
+    expect(normalized.dateFilterField).toBe('submitted_at')
+    expect(normalized.dateFrom).toBe('2026-03-07')
+    expect(normalized.dateTo).toBe('2026-03-08')
+  })
+
   it('detects whether claim-level filters are active', () => {
     expect(
       hasFinanceClaimFilters(

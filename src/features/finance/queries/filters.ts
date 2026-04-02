@@ -137,6 +137,19 @@ export async function getFilteredClaimIdsForFinance(
     }
   }
 
+  if (filters.dateFilterField === 'submitted_at') {
+    const submittedDateFrom = toIstDayStart(filters.dateFrom)
+    const submittedDateTo = toIstDayEnd(filters.dateTo)
+
+    if (submittedDateFrom) {
+      query = query.gte('submitted_at', submittedDateFrom)
+    }
+
+    if (submittedDateTo) {
+      query = query.lte('submitted_at', submittedDateTo)
+    }
+  }
+
   if (
     filters.dateFilterField === 'finance_approved_date' &&
     (filters.dateFrom || filters.dateTo)

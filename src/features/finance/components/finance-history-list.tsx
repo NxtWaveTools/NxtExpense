@@ -21,6 +21,7 @@ type FinanceHistoryPayload = Awaited<ReturnType<typeof getFinanceHistoryAction>>
 
 type FinanceHistoryListProps = {
   history: FinanceHistoryPayload
+  source?: 'finance' | 'approved-history'
   pagination: {
     backHref: string | null
     nextHref: string | null
@@ -33,14 +34,15 @@ type FinanceHistoryListProps = {
 
 export function FinanceHistoryList({
   history,
+  source = 'finance',
   pagination,
 }: FinanceHistoryListProps) {
   if (history.data.length === 0) {
     return (
       <section className="rounded-lg border border-border bg-surface p-8 text-center">
-        <h2 className="text-lg font-semibold">Finance History</h2>
+        <h2 className="text-lg font-semibold">Approved History</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          No past finance actions found.
+          No history claims found.
         </p>
       </section>
     )
@@ -49,7 +51,7 @@ export function FinanceHistoryList({
   return (
     <section className="rounded-lg border border-border bg-surface">
       <div className={DATA_TABLE_HEADER_BAR_CLASS}>
-        <h2 className="text-lg font-semibold">Finance History</h2>
+        <h2 className="text-lg font-semibold">Approved History</h2>
       </div>
 
       <div className={DATA_TABLE_PAGINATION_SLOT_CLASS}>
@@ -70,7 +72,7 @@ export function FinanceHistoryList({
                 Claim ID
               </th>
               <th className={getDataTableHeadCellClass()}>Employee</th>
-              <th className={getDataTableHeadCellClass()}>Claim Date</th>
+              <th className={getDataTableHeadCellClass()}>Travel Date</th>
               <th className={getDataTableHeadCellClass()}>Location</th>
               <th className={getDataTableHeadCellClass()}>Amount</th>
               <th className={getDataTableHeadCellClass()}>Processed On</th>
@@ -79,7 +81,11 @@ export function FinanceHistoryList({
           </thead>
           <tbody className={DATA_TABLE_BODY_CLASS}>
             {history.data.map((row) => (
-              <tr key={row.action.id} className={DATA_TABLE_ROW_CLASS}>
+              <tr
+                key={row.action.id}
+                className={DATA_TABLE_ROW_CLASS}
+                data-testid="finance-history-row"
+              >
                 <td
                   className={getDataTableCellClass({
                     weight: 'medium',
@@ -87,7 +93,7 @@ export function FinanceHistoryList({
                   })}
                 >
                   <Link
-                    href={`/claims/${row.claim.id}?from=finance`}
+                    href={`/claims/${row.claim.id}?from=${source}`}
                     className="text-primary font-semibold hover:text-primary-hover transition-colors"
                   >
                     {row.claim.claim_number}

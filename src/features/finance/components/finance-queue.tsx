@@ -161,9 +161,9 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
   if (queue.data.length === 0) {
     return (
       <section className="rounded-lg border border-border bg-surface p-6">
-        <h2 className="text-lg font-semibold">Finance Queue</h2>
+        <h2 className="text-lg font-semibold">Pending Claims</h2>
         <p className="mt-2 text-sm text-foreground/70">
-          No claims are waiting for finance action.
+          No claims are pending finance action.
         </p>
       </section>
     )
@@ -171,7 +171,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
 
   return (
     <section className="rounded-lg border border-border bg-surface p-6">
-      <h2 className="text-lg font-semibold">Finance Queue</h2>
+      <h2 className="text-lg font-semibold">Pending Claims</h2>
 
       <CursorPaginationControls
         className="mt-3"
@@ -229,7 +229,7 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
         />
 
         <div className={DATA_TABLE_SCROLL_WRAPPER_CLASS}>
-          <table className={`${DATA_TABLE_CLASS} min-w-185 border-collapse`}>
+          <table className={`${DATA_TABLE_CLASS} min-w-220 border-collapse`}>
             <thead>
               <tr className={DATA_TABLE_HEAD_ROW_CLASS}>
                 <th className={getDataTableHeadCellClass()}>Select</th>
@@ -237,7 +237,8 @@ export function FinanceQueue({ queue, pagination }: FinanceQueueProps) {
                   Claim ID
                 </th>
                 <th className={getDataTableHeadCellClass()}>Employee</th>
-                <th className={getDataTableHeadCellClass()}>Date</th>
+                <th className={getDataTableHeadCellClass()}>Travel Date</th>
+                <th className={getDataTableHeadCellClass()}>Submitted At</th>
                 <th className={getDataTableHeadCellClass()}>Location</th>
                 <th className={getDataTableHeadCellClass()}>Amount</th>
               </tr>

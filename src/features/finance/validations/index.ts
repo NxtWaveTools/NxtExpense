@@ -5,6 +5,7 @@ import { isValidClaimStatusFilterValue } from '@/lib/utils/claim-status-filter'
 
 const FINANCE_DATE_FILTER_FIELD_VALUES = [
   'claim_date',
+  'submitted_at',
   'finance_approved_date',
 ] as const
 

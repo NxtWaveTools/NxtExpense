@@ -4,7 +4,7 @@ import {
   DATA_TABLE_ROW_CLASS,
   getDataTableCellClass,
 } from '@/components/ui/data-table-tokens'
-import { formatDate } from '@/lib/utils/date'
+import { formatDate, formatDatetime } from '@/lib/utils/date'
 
 import type { FinanceQueueItem } from '@/features/finance/types'
 
@@ -47,6 +47,11 @@ export function FinanceClaimRow({
       </td>
       <td className={getDataTableCellClass({ muted: true, nowrap: true })}>
         {formatDate(item.claim.claim_date)}
+      </td>
+      <td className={getDataTableCellClass({ muted: true, nowrap: true })}>
+        {item.claim.submitted_at
+          ? formatDatetime(item.claim.submitted_at)
+          : '-'}
       </td>
       <td className={getDataTableCellClass({ muted: true, nowrap: true })}>
         {item.claim.work_location}

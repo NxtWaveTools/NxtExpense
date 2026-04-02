@@ -4,7 +4,10 @@ import type { PaginatedResult } from '@/lib/utils/pagination'
 
 export type FinanceActionFilter = string | null
 
-export type FinanceDateFilterField = 'claim_date' | 'finance_approved_date'
+export type FinanceDateFilterField =
+  | 'claim_date'
+  | 'submitted_at'
+  | 'finance_approved_date'
 
 export type FinanceAction = {
   id: string
