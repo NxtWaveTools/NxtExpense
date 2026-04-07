@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 
 import { submitClaimAction } from '@/features/claims/actions'
 import { getClaimSummaryPreview } from '@/features/claims/components/claim-summary-preview'
@@ -26,9 +27,23 @@ type UseClaimSubmissionFormArgs = {
   allowedVehicleTypes: readonly SelectOption[]
   baseLocationDayTypeOptions: readonly BaseLocationDayTypeOption[]
   workLocationOptions: readonly WorkLocationOption[]
-  initialCityOptions: readonly CityOption[]
   claimRateSnapshot: ClaimRateSnapshot
   initialValues?: ClaimFormInitialValues | null
+}
+
+type CityApiRow = { id: string; city_name: string; state_id: string }
+
+async function fetchCitiesByState(stateId: string): Promise<CityOption[]> {
+  const response = await fetch(
+    `/api/config/cities?state_id=${encodeURIComponent(stateId)}`
+  )
+  if (!response.ok) throw new Error('Failed to fetch cities')
+  const rows: CityApiRow[] = await response.json()
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.city_name,
+    stateId: row.state_id,
+  }))
 }
 
 function getFallbackKmLimit(
@@ -59,7 +74,6 @@ export function useClaimSubmissionForm({
   allowedVehicleTypes,
   baseLocationDayTypeOptions,
   workLocationOptions,
-  initialCityOptions,
   claimRateSnapshot,
   initialValues,
 }: UseClaimSubmissionFormArgs) {
@@ -139,15 +153,14 @@ export function useClaimSubmissionForm({
     [workLocation, workLocationOptions]
   )
 
-  const filteredCityOptions = useMemo(() => {
-    if (!outstationStateId) {
-      return []
-    }
+  const citiesQuery = useQuery<CityOption[], Error>({
+    queryKey: ['cities', outstationStateId],
+    queryFn: () => fetchCitiesByState(outstationStateId),
+    enabled: Boolean(outstationStateId),
+    staleTime: 5 * 60 * 1000,
+  })
 
-    return initialCityOptions.filter(
-      (city) => city.stateId === outstationStateId
-    )
-  }, [initialCityOptions, outstationStateId])
+  const filteredCityOptions = citiesQuery.data ?? []
 
   const kmLimit = useMemo(() => {
     const configuredLimit =

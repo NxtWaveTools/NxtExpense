@@ -60,26 +60,31 @@ export function addMyClaimsFiltersToParams(
   return params
 }
 
-export function buildMyClaimsCsv(rows: Claim[]): string {
-  const headers = [
-    'Claim ID',
-    'Travel Date',
-    'Work Location',
-    'Amount',
-    'Status',
-    'Submitted At',
-  ]
+// FIX [ISSUE#2] — Extracted headers and row mapper for streaming export reuse
+export const MY_CLAIMS_CSV_HEADERS = [
+  'Claim ID',
+  'Travel Date',
+  'Work Location',
+  'Amount',
+  'Status',
+  'Submitted At',
+]
 
-  const bodyRows = rows.map((row) => [
+export function mapMyClaimToCsvRow(row: Claim): string[] {
+  return [
     row.claim_number,
     formatDate(row.claim_date),
     row.work_location,
     `Rs. ${row.total_amount.toFixed(2)}`,
     row.statusName,
     row.submitted_at ? formatDatetime(row.submitted_at) : '-',
-  ])
+  ]
+}
 
-  return [headers, ...bodyRows]
+export function buildMyClaimsCsv(rows: Claim[]): string {
+  const bodyRows = rows.map(mapMyClaimToCsvRow)
+
+  return [MY_CLAIMS_CSV_HEADERS, ...bodyRows]
     .map((cells) =>
       cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
     )

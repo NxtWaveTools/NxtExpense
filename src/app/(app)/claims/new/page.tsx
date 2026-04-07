@@ -12,7 +12,6 @@ import {
   getActiveBaseLocationDayTypes,
   getAllWorkLocations,
   getAllStates,
-  getAllCities,
   getVehicleTypesByDesignation,
   getExpenseRateByType,
 } from '@/lib/services/config-service'
@@ -34,14 +33,13 @@ export default async function NewClaimPage() {
   }
 
   // Fetch lookup data from DB
-  const [workLocations, allowedVehicles, states, cities, baseDayTypes] =
+  const [workLocations, allowedVehicles, states, baseDayTypes] =
     await Promise.all([
       getAllWorkLocations(supabase),
       employee.designation_id
         ? getVehicleTypesByDesignation(supabase, employee.designation_id)
         : Promise.resolve([]),
       getAllStates(supabase),
-      getAllCities(supabase),
       getActiveBaseLocationDayTypes(supabase),
     ])
 
@@ -51,11 +49,6 @@ export default async function NewClaimPage() {
     name: vt.vehicle_name,
   }))
   const stateOptions = states.map((s) => ({ id: s.id, name: s.state_name }))
-  const cityOptions = cities.map((city) => ({
-    id: city.id,
-    name: city.city_name,
-    stateId: city.state_id,
-  }))
 
   if (baseDayTypes.length === 0) {
     throw new Error('No active base location day types are configured.')
@@ -158,7 +151,6 @@ export default async function NewClaimPage() {
             baseLocationDayTypeOptions={baseLocationDayTypeOptions}
             workLocationOptions={workLocationOptions}
             stateOptions={stateOptions}
-            initialCityOptions={cityOptions}
             claimRateSnapshot={claimRateSnapshot}
             initialValues={null}
           />

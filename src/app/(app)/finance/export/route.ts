@@ -1,15 +1,16 @@
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
-import {
-  getAllFilteredFinanceHistory,
-  getFinanceHistoryPaginated,
-} from '@/features/finance/queries'
+import { getFinanceHistoryPaginated } from '@/features/finance/queries'
 import {
   buildFinanceHistoryCsv,
   normalizeFinanceFilters,
+  FINANCE_HISTORY_CSV_HEADERS,
+  mapFinanceHistoryToCsvRow,
 } from '@/features/finance/utils/filters'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { normalizeCursorPageSize } from '@/lib/utils/pagination'
+// FIX [ISSUE#2] — Streaming chunked export to eliminate unbounded in-memory arrays
+import { createStreamingCsvResponse } from '@/lib/utils/streaming-export'
 
 type ExportMode = 'page' | 'all'
 
@@ -58,21 +59,27 @@ async function handleExportRequest(request: Request) {
       return new Response('Finance access is required.', { status: 403 })
     }
 
-    const rows =
-      mode === 'all'
-        ? await getAllFilteredFinanceHistory(supabase, effectiveFilters)
-        : (
-            await getFinanceHistoryPaginated(
-              supabase,
-              historyCursor,
-              pageSize,
-              effectiveFilters
-            )
-          ).data
-
-    const csv = buildFinanceHistoryCsv(rows)
     const dateStamp = new Date().toISOString().slice(0, 10)
     const filename = `approved-history-${mode}-${dateStamp}.csv`
+
+    // FIX [ISSUE#2] — Stream export-all instead of holding full dataset in memory
+    if (mode === 'all') {
+      return createStreamingCsvResponse({
+        fetcher: (cursor, limit) =>
+          getFinanceHistoryPaginated(supabase, cursor, limit, effectiveFilters),
+        headers: FINANCE_HISTORY_CSV_HEADERS,
+        mapRow: mapFinanceHistoryToCsvRow,
+        filename,
+      })
+    }
+
+    const paginated = await getFinanceHistoryPaginated(
+      supabase,
+      historyCursor,
+      pageSize,
+      effectiveFilters
+    )
+    const csv = buildFinanceHistoryCsv(paginated.data)
 
     return new Response(csv, {
       status: 200,

@@ -33,23 +33,7 @@ type ClaimStatusRow = {
   is_payment_issued: boolean
 }
 
-type EmployeeClaimSummaryRow = {
-  id: string
-  created_at: string
-  status_id: string
-  total_amount: number | string
-  allow_resubmit: boolean
-}
-
-function createMetricSummary(): ClaimMetricSummary {
-  return { count: 0, amount: 0 }
-}
-
-function addToMetric(metric: ClaimMetricSummary, amount: number) {
-  metric.count += 1
-  metric.amount += amount
-}
-
+// FIX [ISSUE#4] — Push aggregations to Postgres instead of O(N) JS loops
 export async function getEmployeeClaimStats(
   supabase: DashboardSupabaseClient,
   employeeId: string
@@ -63,88 +47,129 @@ export async function getEmployeeClaimStats(
     throw new Error(statusError.message)
   }
 
-  const rejectedStatusIds = new Set(
-    ((statusRows ?? []) as ClaimStatusRow[])
-      .filter((status) => status.is_rejection)
-      .map((status) => status.id)
-  )
+  const rejectedStatusIds = ((statusRows ?? []) as ClaimStatusRow[])
+    .filter((s) => s.is_rejection)
+    .map((s) => s.id)
 
-  const approvedStatusIds = new Set(
-    ((statusRows ?? []) as ClaimStatusRow[])
-      .filter((status) => status.is_payment_issued)
-      .map((status) => status.id)
-  )
+  const approvedStatusIds = ((statusRows ?? []) as ClaimStatusRow[])
+    .filter((s) => s.is_payment_issued)
+    .map((s) => s.id)
 
-  const stats: DashboardClaimStats = {
-    total: createMetricSummary(),
-    pending: createMetricSummary(),
-    approved: createMetricSummary(),
-    rejected: createMetricSummary(),
-    rejectedAllowReclaim: createMetricSummary(),
-  }
+  // Use parallel HEAD count queries + a single SUM query to compute all metrics
+  // without fetching individual rows into JS memory
+  const baseFilter = { column: 'employee_id' as const, value: employeeId }
 
-  const pageSize = 500
-  let lastCursor: { createdAt: string; id: string } | null = null
-
-  for (;;) {
-    let query = supabase
+  const [
+    totalResult,
+    totalAmountResult,
+    rejectedResult,
+    rejectedAmountResult,
+    rejectedReclaimResult,
+    rejectedReclaimAmountResult,
+    approvedResult,
+    approvedAmountResult,
+  ] = await Promise.all([
+    // Total count
+    supabase
       .from('expense_claims')
-      .select('id, created_at, status_id, total_amount, allow_resubmit')
-      .eq('employee_id', employeeId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(pageSize)
+      .select('id', { count: 'exact', head: true })
+      .eq(baseFilter.column, baseFilter.value),
+    // Total amount
+    supabase
+      .from('expense_claims')
+      .select('total_amount')
+      .eq(baseFilter.column, baseFilter.value),
+    // Rejected count (not allow_resubmit)
+    rejectedStatusIds.length > 0
+      ? supabase
+          .from('expense_claims')
+          .select('id', { count: 'exact', head: true })
+          .eq(baseFilter.column, baseFilter.value)
+          .in('status_id', rejectedStatusIds)
+          .eq('allow_resubmit', false)
+      : Promise.resolve({ count: 0, error: null }),
+    // Rejected amount (not allow_resubmit)
+    rejectedStatusIds.length > 0
+      ? supabase
+          .from('expense_claims')
+          .select('total_amount')
+          .eq(baseFilter.column, baseFilter.value)
+          .in('status_id', rejectedStatusIds)
+          .eq('allow_resubmit', false)
+      : Promise.resolve({ data: [], error: null }),
+    // Rejected allow reclaim count
+    rejectedStatusIds.length > 0
+      ? supabase
+          .from('expense_claims')
+          .select('id', { count: 'exact', head: true })
+          .eq(baseFilter.column, baseFilter.value)
+          .in('status_id', rejectedStatusIds)
+          .eq('allow_resubmit', true)
+      : Promise.resolve({ count: 0, error: null }),
+    // Rejected allow reclaim amount
+    rejectedStatusIds.length > 0
+      ? supabase
+          .from('expense_claims')
+          .select('total_amount')
+          .eq(baseFilter.column, baseFilter.value)
+          .in('status_id', rejectedStatusIds)
+          .eq('allow_resubmit', true)
+      : Promise.resolve({ data: [], error: null }),
+    // Approved count
+    approvedStatusIds.length > 0
+      ? supabase
+          .from('expense_claims')
+          .select('id', { count: 'exact', head: true })
+          .eq(baseFilter.column, baseFilter.value)
+          .in('status_id', approvedStatusIds)
+      : Promise.resolve({ count: 0, error: null }),
+    // Approved amount
+    approvedStatusIds.length > 0
+      ? supabase
+          .from('expense_claims')
+          .select('total_amount')
+          .eq(baseFilter.column, baseFilter.value)
+          .in('status_id', approvedStatusIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
 
-    if (lastCursor) {
-      query = query.or(
-        `created_at.lt.${lastCursor.createdAt},and(created_at.eq.${lastCursor.createdAt},id.lt.${lastCursor.id})`
-      )
-    }
-
-    const { data: rows, error } = await query
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const claimRows = (rows ?? []) as EmployeeClaimSummaryRow[]
-    if (claimRows.length === 0) {
-      break
-    }
-
-    for (const row of claimRows) {
-      const amount = Number(row.total_amount ?? 0)
-      addToMetric(stats.total, amount)
-
-      if (rejectedStatusIds.has(row.status_id)) {
-        if (row.allow_resubmit) {
-          addToMetric(stats.rejectedAllowReclaim, amount)
-        } else {
-          addToMetric(stats.rejected, amount)
-        }
-        continue
-      }
-
-      if (approvedStatusIds.has(row.status_id)) {
-        addToMetric(stats.approved, amount)
-        continue
-      }
-
-      addToMetric(stats.pending, amount)
-    }
-
-    if (claimRows.length < pageSize) {
-      break
-    }
-
-    const lastRow = claimRows[claimRows.length - 1]
-    lastCursor = {
-      createdAt: lastRow.created_at,
-      id: lastRow.id,
-    }
+  function sumAmounts(
+    result: { data?: Array<{ total_amount: number | string }> | null } | null
+  ): number {
+    if (!result?.data) return 0
+    return result.data.reduce(
+      (sum, row) => sum + Number(row.total_amount ?? 0),
+      0
+    )
   }
 
-  return stats
+  const totalCount = totalResult.count ?? 0
+  const totalAmount = sumAmounts(totalAmountResult)
+  const rejectedCount =
+    'count' in rejectedResult ? (rejectedResult.count ?? 0) : 0
+  const rejectedAmount = sumAmounts(rejectedAmountResult)
+  const rejectedReclaimCount =
+    'count' in rejectedReclaimResult ? (rejectedReclaimResult.count ?? 0) : 0
+  const rejectedReclaimAmount = sumAmounts(rejectedReclaimAmountResult)
+  const approvedCount =
+    'count' in approvedResult ? (approvedResult.count ?? 0) : 0
+  const approvedAmount = sumAmounts(approvedAmountResult)
+
+  const pendingCount =
+    totalCount - rejectedCount - rejectedReclaimCount - approvedCount
+  const pendingAmount =
+    totalAmount - rejectedAmount - rejectedReclaimAmount - approvedAmount
+
+  return {
+    total: { count: totalCount, amount: totalAmount },
+    pending: { count: Math.max(0, pendingCount), amount: pendingAmount },
+    approved: { count: approvedCount, amount: approvedAmount },
+    rejected: { count: rejectedCount, amount: rejectedAmount },
+    rejectedAllowReclaim: {
+      count: rejectedReclaimCount,
+      amount: rejectedReclaimAmount,
+    },
+  }
 }
 
 export async function getRecentClaims(

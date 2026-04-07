@@ -10,7 +10,6 @@ import { useClaimSubmissionForm } from '@/features/claims/components/use-claim-s
 import type { ClaimRateSnapshot } from '@/features/claims/components/claim-summary-preview'
 import type {
   BaseLocationDayTypeOption,
-  CityOption,
   ClaimFormInitialValues,
   SelectOption,
   WorkLocation,
@@ -22,7 +21,6 @@ type ClaimSubmissionFormProps = {
   baseLocationDayTypeOptions: readonly BaseLocationDayTypeOption[]
   workLocationOptions: readonly WorkLocationOption[]
   stateOptions: readonly SelectOption[]
-  initialCityOptions: readonly CityOption[]
   claimRateSnapshot: ClaimRateSnapshot
   initialValues?: ClaimFormInitialValues | null
 }
@@ -32,7 +30,6 @@ export function ClaimSubmissionForm({
   baseLocationDayTypeOptions,
   workLocationOptions,
   stateOptions,
-  initialCityOptions,
   claimRateSnapshot,
   initialValues,
 }: ClaimSubmissionFormProps) {
@@ -75,7 +72,6 @@ export function ClaimSubmissionForm({
     allowedVehicleTypes,
     baseLocationDayTypeOptions,
     workLocationOptions,
-    initialCityOptions,
     claimRateSnapshot,
     initialValues,
   })

@@ -122,23 +122,24 @@ function toFriendlyAction(value: string): string {
   return value.replaceAll('_', ' ')
 }
 
-export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
-  const headers = [
-    'Claim ID',
-    'Employee ID',
-    'Employee',
-    'Employee Email',
-    'Employee Designation',
-    'Travel Date',
-    'Work Location',
-    'Total Amount',
-    'Action',
-    'Action By',
-    'Action Date',
-    'Current Status',
-  ]
+// FIX [ISSUE#2] — Extracted headers and row mapper for streaming export reuse
+export const FINANCE_HISTORY_CSV_HEADERS = [
+  'Claim ID',
+  'Employee ID',
+  'Employee',
+  'Employee Email',
+  'Employee Designation',
+  'Travel Date',
+  'Work Location',
+  'Total Amount',
+  'Action',
+  'Action By',
+  'Action Date',
+  'Current Status',
+]
 
-  const bodyRows = rows.map((row) => [
+export function mapFinanceHistoryToCsvRow(row: FinanceHistoryItem): string[] {
+  return [
     row.claim.claim_number,
     row.owner.employee_id,
     row.owner.employee_name,
@@ -151,9 +152,13 @@ export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
     row.action.actor_email,
     formatDatetime(row.action.acted_at),
     row.claim.statusName,
-  ])
+  ]
+}
 
-  return [headers, ...bodyRows]
+export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
+  const bodyRows = rows.map(mapFinanceHistoryToCsvRow)
+
+  return [FINANCE_HISTORY_CSV_HEADERS, ...bodyRows]
     .map((cells) =>
       cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
     )

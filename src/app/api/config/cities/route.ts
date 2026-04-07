@@ -1,10 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import {
-  getAllVehicleTypes,
-  getVehicleTypesByDesignation,
-} from '@/lib/services/config-service'
+import { getCitiesByState } from '@/lib/services/config-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,17 +14,21 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const designationId = request.nextUrl.searchParams.get('designation_id')
 
-    const data = designationId
-      ? await getVehicleTypesByDesignation(supabase, designationId)
-      : await getAllVehicleTypes(supabase)
+    const stateId = request.nextUrl.searchParams.get('state_id')
+    if (!stateId) {
+      return NextResponse.json(
+        { error: 'state_id query parameter is required' },
+        { status: 400 }
+      )
+    }
 
+    const data = await getCitiesByState(supabase, stateId)
     return NextResponse.json(data)
   } catch (error) {
-    console.error('[API] vehicle-types error:', error)
+    console.error('[API] cities error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch vehicle types' },
+      { error: 'Failed to fetch cities' },
       { status: 500 }
     )
   }

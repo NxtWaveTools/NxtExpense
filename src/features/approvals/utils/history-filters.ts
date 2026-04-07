@@ -122,26 +122,29 @@ export function addApprovalFiltersToParams(
   return params
 }
 
-export function buildApprovalHistoryCsv(rows: ApprovalHistoryRecord[]): string {
-  const headers = [
-    'Claim ID',
-    'Employee ID',
-    'Employee',
-    'Employee Email',
-    'Employee Designation',
-    'Travel Date',
-    'Work Location',
-    'Total Amount',
-    'Action',
-    'Action Date',
-    'Actor Email',
-    'Actor Designation',
-    'HOD Approved Date',
-    'Payment Released Date',
-    'Current Status',
-  ]
+// FIX [ISSUE#2] — Extracted headers and row mapper for streaming export reuse
+export const APPROVAL_HISTORY_CSV_HEADERS = [
+  'Claim ID',
+  'Employee ID',
+  'Employee',
+  'Employee Email',
+  'Employee Designation',
+  'Travel Date',
+  'Work Location',
+  'Total Amount',
+  'Action',
+  'Action Date',
+  'Actor Email',
+  'Actor Designation',
+  'HOD Approved Date',
+  'Payment Released Date',
+  'Current Status',
+]
 
-  const bodyRows = rows.map((row) => [
+export function mapApprovalHistoryToCsvRow(
+  row: ApprovalHistoryRecord
+): string[] {
+  return [
     row.claimNumber,
     row.ownerEmployeeId ?? '-',
     row.ownerName,
@@ -157,9 +160,13 @@ export function buildApprovalHistoryCsv(rows: ApprovalHistoryRecord[]): string {
     formatMilestoneDate(row.hodApprovedAt, row.actedAt),
     formatMilestoneDate(row.financeApprovedAt, row.actedAt),
     row.claimStatusName,
-  ])
+  ]
+}
 
-  return [headers, ...bodyRows]
+export function buildApprovalHistoryCsv(rows: ApprovalHistoryRecord[]): string {
+  const bodyRows = rows.map(mapApprovalHistoryToCsvRow)
+
+  return [APPROVAL_HISTORY_CSV_HEADERS, ...bodyRows]
     .map((cells) =>
       cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
     )

@@ -3,15 +3,16 @@ import {
   getEmployeeByEmail,
   hasApproverAssignments,
 } from '@/lib/services/employee-service'
-import {
-  getAllFilteredApprovalHistory,
-  getFilteredApprovalHistoryPaginated,
-} from '@/features/approvals/queries/history-filters'
+import { getFilteredApprovalHistoryPaginated } from '@/features/approvals/queries/history-filters'
 import {
   buildApprovalHistoryCsv,
   normalizeApprovalHistoryFilters,
+  APPROVAL_HISTORY_CSV_HEADERS,
+  mapApprovalHistoryToCsvRow,
 } from '@/features/approvals/utils/history-filters'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+// FIX [ISSUE#2] — Streaming chunked export to eliminate unbounded in-memory arrays
+import { createStreamingCsvResponse } from '@/lib/utils/streaming-export'
 
 const PAGE_EXPORT_LIMIT = 10
 
@@ -66,21 +67,27 @@ async function handleExportRequest(request: Request) {
       return new Response('Access denied.', { status: 403 })
     }
 
-    const rows =
-      mode === 'all'
-        ? await getAllFilteredApprovalHistory(supabase, filters)
-        : (
-            await getFilteredApprovalHistoryPaginated(
-              supabase,
-              historyCursor,
-              PAGE_EXPORT_LIMIT,
-              filters
-            )
-          ).data
-
-    const csv = buildApprovalHistoryCsv(rows)
     const dateStamp = new Date().toISOString().slice(0, 10)
     const filename = `approvals-history-${mode}-${dateStamp}.csv`
+
+    // FIX [ISSUE#2] — Stream export-all instead of holding full dataset in memory
+    if (mode === 'all') {
+      return createStreamingCsvResponse({
+        fetcher: (cursor, limit) =>
+          getFilteredApprovalHistoryPaginated(supabase, cursor, limit, filters),
+        headers: APPROVAL_HISTORY_CSV_HEADERS,
+        mapRow: mapApprovalHistoryToCsvRow,
+        filename,
+      })
+    }
+
+    const paginated = await getFilteredApprovalHistoryPaginated(
+      supabase,
+      historyCursor,
+      PAGE_EXPORT_LIMIT,
+      filters
+    )
+    const csv = buildApprovalHistoryCsv(paginated.data)
 
     return new Response(csv, {
       status: 200,

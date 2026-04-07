@@ -10,12 +10,6 @@ type PendingApprovalsSummary = {
   amount: number
 }
 
-type PendingSummaryRow = {
-  id: string
-  created_at: string
-  total_amount: number | string
-}
-
 const DEFAULT_PENDING_FILTERS: PendingApprovalsFilters = {
   employeeName: null,
   claimStatus: null,
@@ -29,10 +23,6 @@ const DEFAULT_PENDING_FILTERS: PendingApprovalsFilters = {
 
 function toInList(ids: string[]) {
   return ids.map((id) => `"${id.replaceAll('"', '\\"')}"`).join(',')
-}
-
-function buildCursorFilter(createdAt: string, id: string): string {
-  return `created_at.lt.${createdAt},and(created_at.eq.${createdAt},id.lt.${id})`
 }
 
 export async function getPendingApprovalsSummary(
@@ -145,89 +135,99 @@ export async function getPendingApprovalsSummary(
     }
   }
 
-  const pageSize = 500
+  // FIX [ISSUE#4] — Use COUNT + SUM queries instead of O(N) cursor loop
+  let countQuery = supabase
+    .from('expense_claims')
+    .select('id', { count: 'exact', head: true })
+    .in('status_id', pendingStatusIds)
+    .or(approvalFilters.join(','))
 
-  let nextCursor: { created_at: string; id: string } | null = null
-  let totalCount = 0
-  let totalAmount = 0
+  let sumQuery = supabase
+    .from('expense_claims')
+    .select('total_amount')
+    .in('status_id', pendingStatusIds)
+    .or(approvalFilters.join(','))
 
-  for (;;) {
-    let query = supabase
+  if (allowResubmitFilter !== null) {
+    countQuery = countQuery.eq('allow_resubmit', allowResubmitFilter)
+    sumQuery = sumQuery.eq('allow_resubmit', allowResubmitFilter)
+  }
+
+  if (normalizedName) {
+    const escapedName = normalizedName
+      .replaceAll('%', '\\%')
+      .replaceAll('_', '\\_')
+    // Need inner join with employees for name filter — switch to non-head query
+    countQuery = supabase
       .from('expense_claims')
-      .select(
-        'id, created_at, total_amount, employees!employee_id!inner(employee_name, designation_id, approval_employee_id_level_3)'
-      )
+      .select('id, employees!employee_id!inner(employee_name)', {
+        count: 'exact',
+        head: true,
+      })
       .in('status_id', pendingStatusIds)
       .or(approvalFilters.join(','))
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(pageSize)
+      .ilike(
+        'employees.employee_name',
+        `%${escapedName}%`
+      ) as unknown as typeof countQuery
+    sumQuery = supabase
+      .from('expense_claims')
+      .select('total_amount, employees!employee_id!inner(employee_name)')
+      .in('status_id', pendingStatusIds)
+      .or(approvalFilters.join(','))
+      .ilike(
+        'employees.employee_name',
+        `%${escapedName}%`
+      ) as unknown as typeof sumQuery
 
     if (allowResubmitFilter !== null) {
-      query = query.eq('allow_resubmit', allowResubmitFilter)
-    }
-
-    if (nextCursor) {
-      query = query.or(buildCursorFilter(nextCursor.created_at, nextCursor.id))
-    }
-
-    if (normalizedName) {
-      const escapedName = normalizedName
-        .replaceAll('%', '\\%')
-        .replaceAll('_', '\\_')
-      query = query.ilike('employees.employee_name', `%${escapedName}%`)
-    }
-
-    if (filters.claimDateFrom) {
-      query = query.gte('claim_date', filters.claimDateFrom)
-    }
-
-    if (filters.claimDateTo) {
-      query = query.lte('claim_date', filters.claimDateTo)
-    }
-
-    if (filters.amountValue !== null) {
-      if (filters.amountOperator === 'gte') {
-        query = query.gte('total_amount', filters.amountValue)
-      } else if (filters.amountOperator === 'eq') {
-        query = query.eq('total_amount', filters.amountValue)
-      } else {
-        query = query.lte('total_amount', filters.amountValue)
-      }
-    }
-
-    if (scopedLocationIds) {
-      query = query.in('work_location_id', scopedLocationIds)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const rows = (data ?? []) as PendingSummaryRow[]
-
-    if (rows.length === 0) {
-      break
-    }
-
-    totalCount += rows.length
-    totalAmount += rows.reduce(
-      (sum, row) => sum + Number(row.total_amount ?? 0),
-      0
-    )
-
-    if (rows.length < pageSize) {
-      break
-    }
-
-    const lastRow = rows[rows.length - 1]
-    nextCursor = {
-      created_at: lastRow.created_at,
-      id: lastRow.id,
+      countQuery = countQuery.eq('allow_resubmit', allowResubmitFilter)
+      sumQuery = sumQuery.eq('allow_resubmit', allowResubmitFilter)
     }
   }
+
+  if (filters.claimDateFrom) {
+    countQuery = countQuery.gte('claim_date', filters.claimDateFrom)
+    sumQuery = sumQuery.gte('claim_date', filters.claimDateFrom)
+  }
+
+  if (filters.claimDateTo) {
+    countQuery = countQuery.lte('claim_date', filters.claimDateTo)
+    sumQuery = sumQuery.lte('claim_date', filters.claimDateTo)
+  }
+
+  if (filters.amountValue !== null) {
+    if (filters.amountOperator === 'gte') {
+      countQuery = countQuery.gte('total_amount', filters.amountValue)
+      sumQuery = sumQuery.gte('total_amount', filters.amountValue)
+    } else if (filters.amountOperator === 'eq') {
+      countQuery = countQuery.eq('total_amount', filters.amountValue)
+      sumQuery = sumQuery.eq('total_amount', filters.amountValue)
+    } else {
+      countQuery = countQuery.lte('total_amount', filters.amountValue)
+      sumQuery = sumQuery.lte('total_amount', filters.amountValue)
+    }
+  }
+
+  if (scopedLocationIds) {
+    countQuery = countQuery.in('work_location_id', scopedLocationIds)
+    sumQuery = sumQuery.in('work_location_id', scopedLocationIds)
+  }
+
+  const [countResult, sumResult] = await Promise.all([countQuery, sumQuery])
+
+  if (countResult.error) {
+    throw new Error(countResult.error.message)
+  }
+
+  if (sumResult.error) {
+    throw new Error(sumResult.error.message)
+  }
+
+  const totalCount = countResult.count ?? 0
+  const totalAmount = (
+    (sumResult.data ?? []) as Array<{ total_amount: number | string }>
+  ).reduce((sum, row) => sum + Number(row.total_amount ?? 0), 0)
 
   return {
     count: totalCount,

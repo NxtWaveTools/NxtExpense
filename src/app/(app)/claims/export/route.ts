@@ -1,15 +1,16 @@
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
-import {
-  getAllFilteredMyClaims,
-  getMyClaimsPaginated,
-} from '@/features/claims/queries'
+import { getMyClaimsPaginated } from '@/features/claims/queries'
 import {
   buildMyClaimsCsv,
   normalizeMyClaimsFilters,
+  MY_CLAIMS_CSV_HEADERS,
+  mapMyClaimToCsvRow,
 } from '@/features/claims/utils/filters'
 import { canDownloadClaimsCsv } from '@/features/claims/utils/export-permissions'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+// FIX [ISSUE#2] — Streaming chunked export to eliminate unbounded in-memory arrays
+import { createStreamingCsvResponse } from '@/lib/utils/streaming-export'
 
 const PAGE_EXPORT_LIMIT = 10
 
@@ -53,22 +54,28 @@ async function handleExportRequest(request: Request) {
       })
     }
 
-    const rows =
-      mode === 'all'
-        ? await getAllFilteredMyClaims(supabase, employee.id, filters)
-        : (
-            await getMyClaimsPaginated(
-              supabase,
-              employee.id,
-              cursor,
-              PAGE_EXPORT_LIMIT,
-              filters
-            )
-          ).data
-
-    const csv = buildMyClaimsCsv(rows)
     const dateStamp = new Date().toISOString().slice(0, 10)
     const filename = `my-claims-${mode}-${dateStamp}.csv`
+
+    // FIX [ISSUE#2] — Stream export-all instead of holding full dataset in memory
+    if (mode === 'all') {
+      return createStreamingCsvResponse({
+        fetcher: (cur, limit) =>
+          getMyClaimsPaginated(supabase, employee.id, cur, limit, filters),
+        headers: MY_CLAIMS_CSV_HEADERS,
+        mapRow: mapMyClaimToCsvRow,
+        filename,
+      })
+    }
+
+    const paginated = await getMyClaimsPaginated(
+      supabase,
+      employee.id,
+      cursor,
+      PAGE_EXPORT_LIMIT,
+      filters
+    )
+    const csv = buildMyClaimsCsv(paginated.data)
 
     return new Response(csv, {
       status: 200,

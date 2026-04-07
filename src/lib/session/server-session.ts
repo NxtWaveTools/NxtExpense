@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 
 import { isAllowedCorporateEmail } from '@/lib/auth/allowed-email-domains'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -10,9 +11,9 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
  * 2. The user's email belongs to an allowed corporate domain
  *
  * Signs the user out and returns null if either check fails.
- * Server-side only.
+ * Server-side only. Cached per request via React cache().
  */
-export async function getServerUser(): Promise<User | null> {
+export const getServerUser = cache(async (): Promise<User | null> => {
   const supabase = await createSupabaseServerClient()
   const {
     data: { user },
@@ -27,7 +28,7 @@ export async function getServerUser(): Promise<User | null> {
   }
 
   return user
-}
+})
 
 /**
  * Returns the authenticated user or redirects to the given path.

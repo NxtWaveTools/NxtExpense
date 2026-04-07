@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Claim, ClaimItem } from '@/features/claims/types'
 import {
-  getClaimAvailableActions,
+  getClaimAvailableActionsByClaimIds,
   CLAIM_COLUMNS,
   mapClaimRow,
 } from '@/features/claims/queries'
@@ -223,39 +223,54 @@ export async function getPendingApprovalsPaginated(
   const hasNextPage = rows.length > limit
   const pageData = hasNextPage ? rows.slice(0, limit) : rows
 
-  const pending: PendingApproval[] = await Promise.all(
-    pageData.map(async (row) => {
-      const owner = Array.isArray(row.employees)
-        ? row.employees[0]
-        : row.employees
+  // FIX [ISSUE#1] — Batch-fetch items and actions to eliminate N+1 fan-out
+  const claimIds = pageData.map((row) => row.id as string)
 
-      if (!owner) {
-        throw new Error('Claim owner mapping not found.')
-      }
+  const [itemsResult, actionsByClaimId] = await Promise.all([
+    claimIds.length > 0
+      ? supabase
+          .from('expense_claim_items')
+          .select('id, claim_id, item_type, description, amount, created_at')
+          .in('claim_id', claimIds)
+      : Promise.resolve({ data: [], error: null }),
+    getClaimAvailableActionsByClaimIds(supabase, claimIds),
+  ])
 
-      const claim = mapClaimRow(row as Record<string, unknown>)
+  if (itemsResult.error) {
+    throw new Error(itemsResult.error.message)
+  }
 
-      const [{ data: itemsData, error: itemsError }, actions] =
-        await Promise.all([
-          supabase
-            .from('expense_claim_items')
-            .select('id, claim_id, item_type, description, amount, created_at')
-            .eq('claim_id', row.id as string),
-          getClaimAvailableActions(supabase, row.id as string),
-        ])
+  const itemsByClaimId = new Map<string, ClaimItem[]>()
+  for (const item of (itemsResult.data ?? []) as (ClaimItem & {
+    claim_id: string
+  })[]) {
+    const list = itemsByClaimId.get(item.claim_id)
+    if (list) {
+      list.push(item)
+    } else {
+      itemsByClaimId.set(item.claim_id, [item])
+    }
+  }
 
-      if (itemsError) {
-        throw new Error(itemsError.message)
-      }
+  const pending: PendingApproval[] = pageData.map((row) => {
+    const owner = Array.isArray(row.employees)
+      ? row.employees[0]
+      : row.employees
 
-      return {
-        claim: claim as Claim,
-        owner,
-        items: (itemsData ?? []) as ClaimItem[],
-        availableActions: actions,
-      }
-    })
-  )
+    if (!owner) {
+      throw new Error('Claim owner mapping not found.')
+    }
+
+    const claim = mapClaimRow(row as Record<string, unknown>)
+    const claimId = row.id as string
+
+    return {
+      claim: claim as Claim,
+      owner,
+      items: itemsByClaimId.get(claimId) ?? [],
+      availableActions: actionsByClaimId.get(claimId) ?? [],
+    }
+  })
 
   const lastRecord = pageData.at(-1)
   const nextCursor =
