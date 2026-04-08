@@ -92,7 +92,7 @@ async function getEmployeeSearchIds(
     return null
   }
 
-  let query = supabase.from('employees').select('id').limit(5000)
+  let query = supabase.from('employees').select('id').limit(200)
 
   if (employeeIdSearch) {
     query = query.ilike('employee_id', `%${employeeIdSearch}%`)

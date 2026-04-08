@@ -10,12 +10,6 @@ type PendingApprovalsSummary = {
   amount: number
 }
 
-type PendingSummaryRow = {
-  id: string
-  created_at: string
-  total_amount: number | string
-}
-
 const DEFAULT_PENDING_FILTERS: PendingApprovalsFilters = {
   employeeName: null,
   claimStatus: null,
@@ -27,12 +21,13 @@ const DEFAULT_PENDING_FILTERS: PendingApprovalsFilters = {
   claimDateSort: 'desc',
 }
 
-function toInList(ids: string[]) {
-  return ids.map((id) => `"${id.replaceAll('"', '\\"')}"`).join(',')
+type PendingApprovalScopeSummaryRow = {
+  claim_count: number | string | null
+  total_amount: number | string | null
 }
 
-function buildCursorFilter(createdAt: string, id: string): string {
-  return `created_at.lt.${createdAt},and(created_at.eq.${createdAt},id.lt.${id})`
+function toNumber(value: number | string | null | undefined): number {
+  return Number(value ?? 0)
 }
 
 export async function getPendingApprovalsSummary(
@@ -113,21 +108,7 @@ export async function getPendingApprovalsSummary(
   const level1Ids = (level1Employees.data ?? []).map((row) => row.id)
   const level2Ids = (level2Employees.data ?? []).map((row) => row.id)
 
-  const approvalFilters: string[] = []
-
-  if (level1Ids.length > 0) {
-    approvalFilters.push(
-      `and(current_approval_level.eq.1,employee_id.in.(${toInList(level1Ids)}))`
-    )
-  }
-
-  if (level2Ids.length > 0) {
-    approvalFilters.push(
-      `and(current_approval_level.eq.2,employee_id.in.(${toInList(level2Ids)}))`
-    )
-  }
-
-  if (approvalFilters.length === 0) {
+  if (level1Ids.length === 0 && level2Ids.length === 0) {
     return { count: 0, amount: 0 }
   }
 
@@ -145,92 +126,33 @@ export async function getPendingApprovalsSummary(
     }
   }
 
-  const pageSize = 500
-
-  let nextCursor: { created_at: string; id: string } | null = null
-  let totalCount = 0
-  let totalAmount = 0
-
-  for (;;) {
-    let query = supabase
-      .from('expense_claims')
-      .select(
-        'id, created_at, total_amount, employees!employee_id!inner(employee_name, designation_id, approval_employee_id_level_3)'
-      )
-      .in('status_id', pendingStatusIds)
-      .or(approvalFilters.join(','))
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(pageSize)
-
-    if (allowResubmitFilter !== null) {
-      query = query.eq('allow_resubmit', allowResubmitFilter)
+  const { data, error } = await supabase.rpc(
+    'get_pending_approval_scope_summary',
+    {
+      p_level1_employee_ids: level1Ids.length > 0 ? level1Ids : null,
+      p_level2_employee_ids: level2Ids.length > 0 ? level2Ids : null,
+      p_pending_status_ids: pendingStatusIds,
+      p_allow_resubmit: allowResubmitFilter,
+      p_employee_name: normalizedName || null,
+      p_claim_date_from: filters.claimDateFrom,
+      p_claim_date_to: filters.claimDateTo,
+      p_amount_operator:
+        filters.amountValue !== null ? filters.amountOperator : null,
+      p_amount_value: filters.amountValue,
+      p_location_ids: scopedLocationIds,
     }
+  )
 
-    if (nextCursor) {
-      query = query.or(buildCursorFilter(nextCursor.created_at, nextCursor.id))
-    }
-
-    if (normalizedName) {
-      const escapedName = normalizedName
-        .replaceAll('%', '\\%')
-        .replaceAll('_', '\\_')
-      query = query.ilike('employees.employee_name', `%${escapedName}%`)
-    }
-
-    if (filters.claimDateFrom) {
-      query = query.gte('claim_date', filters.claimDateFrom)
-    }
-
-    if (filters.claimDateTo) {
-      query = query.lte('claim_date', filters.claimDateTo)
-    }
-
-    if (filters.amountValue !== null) {
-      if (filters.amountOperator === 'gte') {
-        query = query.gte('total_amount', filters.amountValue)
-      } else if (filters.amountOperator === 'eq') {
-        query = query.eq('total_amount', filters.amountValue)
-      } else {
-        query = query.lte('total_amount', filters.amountValue)
-      }
-    }
-
-    if (scopedLocationIds) {
-      query = query.in('work_location_id', scopedLocationIds)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const rows = (data ?? []) as PendingSummaryRow[]
-
-    if (rows.length === 0) {
-      break
-    }
-
-    totalCount += rows.length
-    totalAmount += rows.reduce(
-      (sum, row) => sum + Number(row.total_amount ?? 0),
-      0
-    )
-
-    if (rows.length < pageSize) {
-      break
-    }
-
-    const lastRow = rows[rows.length - 1]
-    nextCursor = {
-      created_at: lastRow.created_at,
-      id: lastRow.id,
-    }
+  if (error) {
+    throw new Error(error.message)
   }
 
+  const summary = (
+    Array.isArray(data) ? data[0] : data
+  ) as PendingApprovalScopeSummaryRow | null
+
   return {
-    count: totalCount,
-    amount: totalAmount,
+    count: toNumber(summary?.claim_count),
+    amount: toNumber(summary?.total_amount),
   }
 }

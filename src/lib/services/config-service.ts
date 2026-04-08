@@ -133,6 +133,21 @@ export async function getAllCities(supabase: SupabaseClient): Promise<City[]> {
   return data as City[]
 }
 
+export async function getCitiesByState(
+  supabase: SupabaseClient,
+  stateId: string
+): Promise<City[]> {
+  const { data, error } = await supabase
+    .from('cities')
+    .select('id, city_name, state_id')
+    .eq('is_active', true)
+    .eq('state_id', stateId)
+    .order('city_name')
+
+  if (error) throw new Error(`Failed to fetch cities: ${error.message}`)
+  return data as City[]
+}
+
 export async function getAllWorkLocations(
   supabase: SupabaseClient
 ): Promise<WorkLocation[]> {

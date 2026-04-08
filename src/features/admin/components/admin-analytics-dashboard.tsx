@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowRight, Shield } from 'lucide-react'
 import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 
 import { ClaimAnalyticsCards } from '@/components/ui/claim-analytics-cards'
 import {
@@ -12,7 +13,13 @@ import {
   getAdminDashboardAnalyticsAction,
 } from '@/features/admin/actions/analytics-actions'
 import { AdminAnalyticsClaimsTable } from '@/features/admin/components/admin-analytics-claims-table'
-import { AdminAnalyticsCharts } from '@/features/admin/components/admin-analytics-charts'
+const AdminAnalyticsCharts = dynamic(
+  () =>
+    import('@/features/admin/components/admin-analytics-charts').then(
+      (m) => m.AdminAnalyticsCharts
+    ),
+  { ssr: false }
+)
 import { AdminAnalyticsFiltersBar } from '@/features/admin/components/admin-analytics-filters'
 import type {
   AdminAnalyticsClaimsPage,

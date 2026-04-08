@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 
 import {
   getFinanceDashboardAnalytics,
@@ -16,7 +17,13 @@ import type {
 } from '@/features/dashboard/types/finance-dashboard'
 import { FinanceKPIStrip } from '@/features/dashboard/components/finance-kpi-strip'
 import { FinanceDashboardFiltersBar } from '@/features/dashboard/components/finance-dashboard-filters'
-import { FinanceDashboardCharts } from '@/features/dashboard/components/finance-dashboard-charts'
+const FinanceDashboardCharts = dynamic(
+  () =>
+    import('@/features/dashboard/components/finance-dashboard-charts').then(
+      (m) => m.FinanceDashboardCharts
+    ),
+  { ssr: false }
+)
 
 const EMPTY_FILTERS: FinanceDashboardFilters = {
   dateFilterField: 'travel_date',

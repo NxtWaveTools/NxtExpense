@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type {
   Claim,
-  ClaimAvailableAction,
   ClaimHistoryEntry,
   MyClaimsFilters,
   ClaimItem,
@@ -11,91 +10,24 @@ import type {
   PaginatedClaims,
 } from '@/features/claims/types'
 import { decodeCursor, encodeCursor } from '@/lib/utils/pagination'
-import { getClaimStatusDisplay } from '@/lib/utils/claim-status'
 import {
   buildClaimStatusFilterOptions,
   parseClaimStatusFilterValue,
 } from '@/lib/utils/claim-status-filter'
 import { resolveClaimAllowResubmitFilterValue } from '@/lib/services/claim-status-filter-service'
+import { CLAIM_COLUMNS, mapClaimRow } from './claim-columns'
 
-const LEGACY_CLAIM_COLUMNS =
-  'id, claim_number, employee_id, claim_date, work_location_id, work_locations(location_name), own_vehicle_used, vehicle_type_id, vehicle_types(vehicle_name), outstation_state_id, outstation_city_id, from_city_id, to_city_id, outstation_state:states!outstation_state_id(state_name), outstation_city:cities!outstation_city_id(city_name), from_city_data:cities!from_city_id(city_name), to_city_data:cities!to_city_id(city_name), km_travelled, total_amount, status_id, claim_statuses!status_id(status_code, status_name, display_color, allow_resubmit_status_name, allow_resubmit_display_color, is_terminal, is_rejection), allow_resubmit, is_superseded, current_approval_level, submitted_at, created_at, updated_at, resubmission_count, last_rejection_notes, last_rejected_at, accommodation_nights, food_with_principals_amount'
-
-const SEGMENT_CLAIM_COLUMNS =
-  'has_intercity_travel, has_intracity_travel, intercity_own_vehicle_used, intracity_own_vehicle_used, intracity_vehicle_mode'
-const BASE_DAY_TYPE_CLAIM_COLUMNS = 'base_location_day_type_code'
-
-export const CLAIM_COLUMNS = `${LEGACY_CLAIM_COLUMNS}, ${SEGMENT_CLAIM_COLUMNS}, ${BASE_DAY_TYPE_CLAIM_COLUMNS}`
-const CLAIM_AVAILABLE_ACTIONS_MAX_RETRIES = 2
-const CLAIM_AVAILABLE_ACTIONS_RETRY_DELAY_MS = 250
-
-function isTransientNetworkErrorMessage(message: string): boolean {
-  const normalized = message.toLowerCase()
-  return (
-    normalized.includes('fetch failed') ||
-    normalized.includes('failed to fetch') ||
-    normalized.includes('network') ||
-    normalized.includes('timeout') ||
-    normalized.includes('connect') ||
-    normalized.includes('terminated')
-  )
-}
-
-async function waitForRetry(attempt: number): Promise<void> {
-  await new Promise((resolve) =>
-    setTimeout(resolve, CLAIM_AVAILABLE_ACTIONS_RETRY_DELAY_MS * attempt)
-  )
-}
-
-// Maps raw Supabase FK join row to flat Claim type
-export function mapClaimRow(raw: Record<string, unknown>): Claim {
-  const r = raw as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
-  const statusInfo = Array.isArray(r.claim_statuses)
-    ? r.claim_statuses[0]
-    : r.claim_statuses
-  const statusCode = statusInfo?.status_code
-  const statusDisplay = getClaimStatusDisplay({
-    statusCode,
-    statusName: statusInfo?.status_name,
-    statusDisplayColor: statusInfo?.display_color,
-    allowResubmit: Boolean(r.allow_resubmit),
-    allowResubmitStatusName: statusInfo?.allow_resubmit_status_name,
-    allowResubmitDisplayColor: statusInfo?.allow_resubmit_display_color,
-  })
-  const outstationCity = Array.isArray(r.outstation_city)
-    ? r.outstation_city[0]
-    : r.outstation_city
-  const outstationState = Array.isArray(r.outstation_state)
-    ? r.outstation_state[0]
-    : r.outstation_state
-  const fromCityObj = Array.isArray(r.from_city_data)
-    ? r.from_city_data[0]
-    : r.from_city_data
-  const toCityObj = Array.isArray(r.to_city_data)
-    ? r.to_city_data[0]
-    : r.to_city_data
-  return {
-    ...r,
-    has_intercity_travel: r.has_intercity_travel ?? false,
-    has_intracity_travel: r.has_intracity_travel ?? false,
-    intercity_own_vehicle_used: r.intercity_own_vehicle_used ?? null,
-    intracity_own_vehicle_used: r.intracity_own_vehicle_used ?? null,
-    intracity_vehicle_mode: r.intracity_vehicle_mode ?? null,
-    base_location_day_type_code: r.base_location_day_type_code ?? null,
-    allow_resubmit: r.allow_resubmit ?? false,
-    is_superseded: r.is_superseded ?? false,
-    statusName: statusDisplay.label,
-    statusDisplayColor: statusDisplay.colorToken,
-    is_terminal: statusInfo?.is_terminal ?? false,
-    is_rejection: statusInfo?.is_rejection ?? false,
-    outstation_state_name: outstationState?.state_name ?? null,
-    work_location: r.work_locations?.location_name ?? '',
-    vehicle_type: r.vehicle_types?.vehicle_name ?? null,
-    outstation_city_name: outstationCity?.city_name ?? null,
-    from_city_name: fromCityObj?.city_name ?? null,
-    to_city_name: toCityObj?.city_name ?? null,
-  } as Claim
-}
+// Re-export submodules for barrel access
+export { CLAIM_COLUMNS, mapClaimRow } from './claim-columns'
+export {
+  getClaimAvailableActions,
+  getClaimAvailableActionsByClaimIds,
+} from './claim-actions'
+export {
+  getMyClaimsStats,
+  type MyClaimsMetricSummary,
+  type MyClaimsStats,
+} from './claim-stats'
 
 const DEFAULT_MY_CLAIMS_FILTERS: MyClaimsFilters = {
   claimStatus: null,
@@ -308,113 +240,6 @@ export async function getClaimStatusCatalog(
   })
 }
 
-export async function getClaimAvailableActions(
-  supabase: SupabaseClient,
-  claimId: string
-): Promise<ClaimAvailableAction[]> {
-  for (
-    let attempt = 0;
-    attempt <= CLAIM_AVAILABLE_ACTIONS_MAX_RETRIES;
-    attempt += 1
-  ) {
-    const { data, error } = await supabase.rpc('get_claim_available_actions', {
-      p_claim_id: claimId,
-    })
-
-    if (!error) {
-      return (data ?? []) as ClaimAvailableAction[]
-    }
-
-    const shouldRetry =
-      attempt < CLAIM_AVAILABLE_ACTIONS_MAX_RETRIES &&
-      isTransientNetworkErrorMessage(error.message)
-
-    if (shouldRetry) {
-      await waitForRetry(attempt + 1)
-      continue
-    }
-
-    throw new Error(error.message)
-  }
-
-  throw new Error('Failed to fetch claim actions after retries.')
-}
-
-type BulkClaimAvailableActionRow = ClaimAvailableAction & {
-  claim_id: string
-}
-
-function isMissingBulkActionsRpcError(error: { message?: string } | null) {
-  const message = error?.message?.toLowerCase() ?? ''
-
-  return (
-    message.includes('get_claim_available_actions_bulk') &&
-    (message.includes('schema cache') || message.includes('does not exist'))
-  )
-}
-
-export async function getClaimAvailableActionsByClaimIds(
-  supabase: SupabaseClient,
-  claimIds: string[]
-): Promise<Map<string, ClaimAvailableAction[]>> {
-  const uniqueClaimIds = [...new Set(claimIds)]
-
-  if (uniqueClaimIds.length === 0) {
-    return new Map()
-  }
-
-  const actionsByClaimId = new Map<string, ClaimAvailableAction[]>(
-    uniqueClaimIds.map((claimId) => [claimId, []])
-  )
-
-  const { data, error } = await supabase.rpc(
-    'get_claim_available_actions_bulk',
-    {
-      p_claim_ids: uniqueClaimIds,
-    }
-  )
-
-  // Keep compatibility with environments where the bulk RPC migration
-  // has not been applied yet by falling back to per-claim lookups.
-  if (error) {
-    if (!isMissingBulkActionsRpcError(error)) {
-      throw new Error(error.message)
-    }
-
-    const fallbackResults = await Promise.all(
-      uniqueClaimIds.map(async (claimId) => {
-        const actions = await getClaimAvailableActions(supabase, claimId)
-        return { claimId, actions }
-      })
-    )
-
-    for (const fallbackResult of fallbackResults) {
-      actionsByClaimId.set(fallbackResult.claimId, fallbackResult.actions)
-    }
-
-    return actionsByClaimId
-  }
-
-  for (const row of (data ?? []) as BulkClaimAvailableActionRow[]) {
-    const existing = actionsByClaimId.get(row.claim_id)
-
-    if (!existing) {
-      actionsByClaimId.set(row.claim_id, [row])
-      continue
-    }
-
-    existing.push({
-      action: row.action,
-      display_label: row.display_label,
-      require_notes: row.require_notes,
-      supports_allow_resubmit: row.supports_allow_resubmit,
-      actor_scope: row.actor_scope,
-    })
-  }
-
-  return actionsByClaimId
-}
-
 export async function getClaimHistory(
   supabase: SupabaseClient,
   claimId: string
@@ -447,28 +272,14 @@ export async function getAllFilteredMyClaims(
   filters: MyClaimsFilters,
   batchSize = 200
 ): Promise<Claim[]> {
-  const allRows: Claim[] = []
-  let cursor: string | null = null
+  void supabase
+  void employeeId
+  void filters
+  void batchSize
 
-  for (;;) {
-    const page = await getMyClaimsPaginated(
-      supabase,
-      employeeId,
-      cursor,
-      batchSize,
-      filters
-    )
-
-    allRows.push(...page.data)
-
-    if (!page.hasNextPage || !page.nextCursor) {
-      break
-    }
-
-    cursor = page.nextCursor
-  }
-
-  return allRows
+  throw new Error(
+    'Unbounded getAllFilteredMyClaims is disabled. Use getMyClaimsPaginated for cursor-based access.'
+  )
 }
 
 export async function getMyClaimsTotalCount(
@@ -492,140 +303,4 @@ export async function getMyClaimsTotalCount(
   }
 
   return count ?? 0
-}
-
-export type MyClaimsMetricSummary = {
-  count: number
-  amount: number
-}
-
-export type MyClaimsStats = {
-  total: MyClaimsMetricSummary
-  pending: MyClaimsMetricSummary
-  rejected: MyClaimsMetricSummary
-  rejectedAllowReclaim: MyClaimsMetricSummary
-}
-
-type ClaimStatusSummaryRow = {
-  id: string
-  is_rejection: boolean
-  is_payment_issued: boolean
-}
-
-type MyClaimStatsRow = {
-  id: string
-  created_at: string
-  status_id: string
-  total_amount: number | string
-  allow_resubmit: boolean
-}
-
-function createMetricSummary(): MyClaimsMetricSummary {
-  return { count: 0, amount: 0 }
-}
-
-function addToMetric(metric: MyClaimsMetricSummary, amount: number) {
-  metric.count += 1
-  metric.amount += amount
-}
-
-export async function getMyClaimsStats(
-  supabase: SupabaseClient,
-  employeeId: string,
-  filters: MyClaimsFilters
-): Promise<MyClaimsStats> {
-  const statusFilter = await resolveMyClaimsStatusFilter(supabase, filters)
-
-  const { data: statusRows, error: statusError } = await supabase
-    .from('claim_statuses')
-    .select('id, is_rejection, is_payment_issued')
-    .eq('is_active', true)
-
-  if (statusError) {
-    throw new Error(statusError.message)
-  }
-
-  const rejectedStatusIds = new Set(
-    ((statusRows ?? []) as ClaimStatusSummaryRow[])
-      .filter((status) => status.is_rejection)
-      .map((status) => status.id)
-  )
-
-  const approvedStatusIds = new Set(
-    ((statusRows ?? []) as ClaimStatusSummaryRow[])
-      .filter((status) => status.is_payment_issued)
-      .map((status) => status.id)
-  )
-
-  const stats: MyClaimsStats = {
-    total: createMetricSummary(),
-    pending: createMetricSummary(),
-    rejected: createMetricSummary(),
-    rejectedAllowReclaim: createMetricSummary(),
-  }
-
-  const pageSize = 500
-  let lastCursor: { createdAt: string; id: string } | null = null
-
-  for (;;) {
-    let query = supabase
-      .from('expense_claims')
-      .select('id, created_at, status_id, total_amount, allow_resubmit')
-      .eq('employee_id', employeeId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(pageSize)
-
-    if (lastCursor) {
-      query = query.or(
-        `created_at.lt.${lastCursor.createdAt},and(created_at.eq.${lastCursor.createdAt},id.lt.${lastCursor.id})`
-      )
-    }
-
-    applyMyClaimsFilters(query, filters, statusFilter)
-
-    const { data, error } = await query
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const claimRows = (data ?? []) as MyClaimStatsRow[]
-
-    if (claimRows.length === 0) {
-      break
-    }
-
-    for (const row of claimRows) {
-      const amount = Number(row.total_amount ?? 0)
-      addToMetric(stats.total, amount)
-
-      if (rejectedStatusIds.has(row.status_id)) {
-        if (row.allow_resubmit) {
-          addToMetric(stats.rejectedAllowReclaim, amount)
-        } else {
-          addToMetric(stats.rejected, amount)
-        }
-        continue
-      }
-
-      if (approvedStatusIds.has(row.status_id)) {
-        continue
-      }
-
-      addToMetric(stats.pending, amount)
-    }
-
-    if (claimRows.length < pageSize) {
-      break
-    }
-
-    const lastRow = claimRows[claimRows.length - 1]
-    lastCursor = {
-      createdAt: lastRow.created_at,
-      id: lastRow.id,
-    }
-  }
-
-  return stats
 }

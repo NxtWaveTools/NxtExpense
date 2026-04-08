@@ -1,23 +1,25 @@
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
-import {
-  getAllFilteredMyClaims,
-  getMyClaimsPaginated,
-} from '@/features/claims/queries'
+import { getMyClaimsPaginated } from '@/features/claims/queries'
 import {
   buildMyClaimsCsv,
   normalizeMyClaimsFilters,
+  MY_CLAIMS_CSV_HEADERS,
+  mapMyClaimToCsvRow,
 } from '@/features/claims/utils/filters'
 import { canDownloadClaimsCsv } from '@/features/claims/utils/export-permissions'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import {
+  buildDatedCsvFilename,
+  createCsvErrorResponse,
+  createCsvResponse,
+  createExportRouteHandlers,
+  getExportMode,
+} from '@/lib/utils/export-route'
+// FIX [ISSUE#2] — Streaming chunked export to eliminate unbounded in-memory arrays
+import { createStreamingCsvResponse } from '@/lib/utils/streaming-export'
 
 const PAGE_EXPORT_LIMIT = 10
-
-type ExportMode = 'page' | 'all'
-
-function getExportMode(value: string | null): ExportMode {
-  return value === 'all' ? 'all' : 'page'
-}
 
 async function handleExportRequest(request: Request) {
   try {
@@ -53,43 +55,32 @@ async function handleExportRequest(request: Request) {
       })
     }
 
-    const rows =
-      mode === 'all'
-        ? await getAllFilteredMyClaims(supabase, employee.id, filters)
-        : (
-            await getMyClaimsPaginated(
-              supabase,
-              employee.id,
-              cursor,
-              PAGE_EXPORT_LIMIT,
-              filters
-            )
-          ).data
+    const filename = buildDatedCsvFilename('my-claims', mode)
 
-    const csv = buildMyClaimsCsv(rows)
-    const dateStamp = new Date().toISOString().slice(0, 10)
-    const filename = `my-claims-${mode}-${dateStamp}.csv`
+    // FIX [ISSUE#2] — Stream export-all instead of holding full dataset in memory
+    if (mode === 'all') {
+      return createStreamingCsvResponse({
+        fetcher: (cur, limit) =>
+          getMyClaimsPaginated(supabase, employee.id, cur, limit, filters),
+        headers: MY_CLAIMS_CSV_HEADERS,
+        mapRow: mapMyClaimToCsvRow,
+        filename,
+      })
+    }
 
-    return new Response(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'no-store',
-      },
-    })
-  } catch (error) {
-    return new Response(
-      error instanceof Error ? error.message : 'Failed to export CSV.',
-      { status: 400 }
+    const paginated = await getMyClaimsPaginated(
+      supabase,
+      employee.id,
+      cursor,
+      PAGE_EXPORT_LIMIT,
+      filters
     )
+    const csv = buildMyClaimsCsv(paginated.data)
+
+    return createCsvResponse(csv, filename)
+  } catch (error) {
+    return createCsvErrorResponse(error)
   }
 }
 
-export async function GET(request: Request) {
-  return handleExportRequest(request)
-}
-
-export async function POST(request: Request) {
-  return handleExportRequest(request)
-}
+export const { GET, POST } = createExportRouteHandlers(handleExportRequest)
