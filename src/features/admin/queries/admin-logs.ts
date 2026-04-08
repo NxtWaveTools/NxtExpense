@@ -47,12 +47,12 @@ export async function getAdminLogFilterOptions(
       .from('admin_logs')
       .select('action_type')
       .order('action_type')
-      .limit(500),
+      .limit(200),
     supabase
       .from('admin_logs')
       .select('entity_type')
       .order('entity_type')
-      .limit(500),
+      .limit(200),
   ])
 
   const queryError = actionRowsResult.error ?? entityRowsResult.error

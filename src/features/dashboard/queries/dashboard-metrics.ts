@@ -27,124 +27,60 @@ type DashboardSupabaseClient = Awaited<
   ReturnType<typeof createSupabaseServerClient>
 >
 
-type ClaimStatusRow = {
-  id: string
-  is_rejection: boolean
-  is_payment_issued: boolean
-}
-
-type EmployeeClaimSummaryRow = {
-  id: string
-  created_at: string
-  status_id: string
-  total_amount: number | string
-  allow_resubmit: boolean
-}
-
-function createMetricSummary(): ClaimMetricSummary {
-  return { count: 0, amount: 0 }
-}
-
-function addToMetric(metric: ClaimMetricSummary, amount: number) {
-  metric.count += 1
-  metric.amount += amount
+type EmployeeClaimMetricsRow = {
+  total_count: number | string | null
+  total_amount: number | string | null
+  pending_count: number | string | null
+  pending_amount: number | string | null
+  approved_count: number | string | null
+  approved_amount: number | string | null
+  rejected_count: number | string | null
+  rejected_amount: number | string | null
+  rejected_allow_reclaim_count: number | string | null
+  rejected_allow_reclaim_amount: number | string | null
 }
 
 export async function getEmployeeClaimStats(
   supabase: DashboardSupabaseClient,
   employeeId: string
 ): Promise<DashboardClaimStats> {
-  const { data: statusRows, error: statusError } = await supabase
-    .from('claim_statuses')
-    .select('id, is_rejection, is_payment_issued')
-    .eq('is_active', true)
+  const { data, error } = await supabase.rpc('get_employee_claim_metrics', {
+    p_employee_id: employeeId,
+  })
 
-  if (statusError) {
-    throw new Error(statusError.message)
+  if (error) {
+    throw new Error(error.message)
   }
 
-  const rejectedStatusIds = new Set(
-    ((statusRows ?? []) as ClaimStatusRow[])
-      .filter((status) => status.is_rejection)
-      .map((status) => status.id)
-  )
+  const metrics = (
+    Array.isArray(data) ? data[0] : data
+  ) as EmployeeClaimMetricsRow | null
 
-  const approvedStatusIds = new Set(
-    ((statusRows ?? []) as ClaimStatusRow[])
-      .filter((status) => status.is_payment_issued)
-      .map((status) => status.id)
-  )
+  const toNumber = (value: number | string | null | undefined): number =>
+    Number(value ?? 0)
 
-  const stats: DashboardClaimStats = {
-    total: createMetricSummary(),
-    pending: createMetricSummary(),
-    approved: createMetricSummary(),
-    rejected: createMetricSummary(),
-    rejectedAllowReclaim: createMetricSummary(),
+  return {
+    total: {
+      count: toNumber(metrics?.total_count),
+      amount: toNumber(metrics?.total_amount),
+    },
+    pending: {
+      count: toNumber(metrics?.pending_count),
+      amount: toNumber(metrics?.pending_amount),
+    },
+    approved: {
+      count: toNumber(metrics?.approved_count),
+      amount: toNumber(metrics?.approved_amount),
+    },
+    rejected: {
+      count: toNumber(metrics?.rejected_count),
+      amount: toNumber(metrics?.rejected_amount),
+    },
+    rejectedAllowReclaim: {
+      count: toNumber(metrics?.rejected_allow_reclaim_count),
+      amount: toNumber(metrics?.rejected_allow_reclaim_amount),
+    },
   }
-
-  const pageSize = 500
-  let lastCursor: { createdAt: string; id: string } | null = null
-
-  for (;;) {
-    let query = supabase
-      .from('expense_claims')
-      .select('id, created_at, status_id, total_amount, allow_resubmit')
-      .eq('employee_id', employeeId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(pageSize)
-
-    if (lastCursor) {
-      query = query.or(
-        `created_at.lt.${lastCursor.createdAt},and(created_at.eq.${lastCursor.createdAt},id.lt.${lastCursor.id})`
-      )
-    }
-
-    const { data: rows, error } = await query
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const claimRows = (rows ?? []) as EmployeeClaimSummaryRow[]
-    if (claimRows.length === 0) {
-      break
-    }
-
-    for (const row of claimRows) {
-      const amount = Number(row.total_amount ?? 0)
-      addToMetric(stats.total, amount)
-
-      if (rejectedStatusIds.has(row.status_id)) {
-        if (row.allow_resubmit) {
-          addToMetric(stats.rejectedAllowReclaim, amount)
-        } else {
-          addToMetric(stats.rejected, amount)
-        }
-        continue
-      }
-
-      if (approvedStatusIds.has(row.status_id)) {
-        addToMetric(stats.approved, amount)
-        continue
-      }
-
-      addToMetric(stats.pending, amount)
-    }
-
-    if (claimRows.length < pageSize) {
-      break
-    }
-
-    const lastRow = claimRows[claimRows.length - 1]
-    lastCursor = {
-      createdAt: lastRow.created_at,
-      id: lastRow.id,
-    }
-  }
-
-  return stats
 }
 
 export async function getRecentClaims(

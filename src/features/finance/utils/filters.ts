@@ -1,4 +1,5 @@
 import { formatDate, formatDatetime } from '@/lib/utils/date'
+import { toCsvCell } from '@/lib/utils/csv'
 import type {
   FinanceFilters,
   FinanceHistoryItem,
@@ -113,32 +114,28 @@ export function toIstDayEnd(date: string | null): string | null {
   return date ? `${date}${IST_DAY_END}` : null
 }
 
-function normalizeCsvCell(value: string): string {
-  const escaped = value.replaceAll('"', '""')
-  return `"${escaped}"`
-}
-
 function toFriendlyAction(value: string): string {
   return value.replaceAll('_', ' ')
 }
 
-export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
-  const headers = [
-    'Claim ID',
-    'Employee ID',
-    'Employee',
-    'Employee Email',
-    'Employee Designation',
-    'Travel Date',
-    'Work Location',
-    'Total Amount',
-    'Action',
-    'Action By',
-    'Action Date',
-    'Current Status',
-  ]
+// FIX [ISSUE#2] — Extracted headers and row mapper for streaming export reuse
+export const FINANCE_HISTORY_CSV_HEADERS = [
+  'Claim ID',
+  'Employee ID',
+  'Employee',
+  'Employee Email',
+  'Employee Designation',
+  'Travel Date',
+  'Work Location',
+  'Total Amount',
+  'Action',
+  'Action By',
+  'Action Date',
+  'Current Status',
+]
 
-  const bodyRows = rows.map((row) => [
+export function mapFinanceHistoryToCsvRow(row: FinanceHistoryItem): string[] {
+  return [
     row.claim.claim_number,
     row.owner.employee_id,
     row.owner.employee_name,
@@ -151,30 +148,34 @@ export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
     row.action.actor_email,
     formatDatetime(row.action.acted_at),
     row.claim.statusName,
-  ])
+  ]
+}
 
-  return [headers, ...bodyRows]
-    .map((cells) =>
-      cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
-    )
+export function buildFinanceHistoryCsv(rows: FinanceHistoryItem[]): string {
+  const bodyRows = rows.map(mapFinanceHistoryToCsvRow)
+
+  return [FINANCE_HISTORY_CSV_HEADERS, ...bodyRows]
+    .map((cells) => cells.map((cell) => toCsvCell(String(cell))).join(','))
     .join('\n')
 }
 
-export function buildFinancePendingClaimsCsv(rows: FinanceQueueItem[]): string {
-  const headers = [
-    'Claim ID',
-    'Employee ID',
-    'Employee',
-    'Employee Email',
-    'Employee Designation',
-    'Travel Date',
-    'Submitted At',
-    'Work Location',
-    'Total Amount',
-    'Current Status',
-  ]
+export const FINANCE_PENDING_CLAIMS_CSV_HEADERS = [
+  'Claim ID',
+  'Employee ID',
+  'Employee',
+  'Employee Email',
+  'Employee Designation',
+  'Travel Date',
+  'Submitted At',
+  'Work Location',
+  'Total Amount',
+  'Current Status',
+]
 
-  const bodyRows = rows.map((row) => [
+export function mapFinancePendingClaimToCsvRow(
+  row: FinanceQueueItem
+): string[] {
+  return [
     row.claim.claim_number,
     row.owner.employee_id,
     row.owner.employee_name,
@@ -185,11 +186,13 @@ export function buildFinancePendingClaimsCsv(rows: FinanceQueueItem[]): string {
     row.claim.work_location,
     `Rs. ${Number(row.claim.total_amount).toFixed(2)}`,
     row.claim.statusName,
-  ])
+  ]
+}
 
-  return [headers, ...bodyRows]
-    .map((cells) =>
-      cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
-    )
+export function buildFinancePendingClaimsCsv(rows: FinanceQueueItem[]): string {
+  const bodyRows = rows.map(mapFinancePendingClaimToCsvRow)
+
+  return [FINANCE_PENDING_CLAIMS_CSV_HEADERS, ...bodyRows]
+    .map((cells) => cells.map((cell) => toCsvCell(String(cell))).join(','))
     .join('\n')
 }

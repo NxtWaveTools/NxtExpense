@@ -1,4 +1,5 @@
 import { formatDate, formatDatetime } from '@/lib/utils/date'
+import { toCsvCell } from '@/lib/utils/csv'
 import type { Claim, MyClaimsFilters } from '@/features/claims/types'
 import { myClaimsFiltersSchema } from '@/features/claims/validations'
 
@@ -9,11 +10,6 @@ type ClaimsFilterInput = Partial<
 function normalizeText(value: string | undefined): string | null {
   const normalized = value?.trim() ?? ''
   return normalized ? normalized : null
-}
-
-function normalizeCsvCell(value: string): string {
-  const escaped = value.replaceAll('"', '""')
-  return `"${escaped}"`
 }
 
 export function normalizeMyClaimsFilters(
@@ -60,28 +56,31 @@ export function addMyClaimsFiltersToParams(
   return params
 }
 
-export function buildMyClaimsCsv(rows: Claim[]): string {
-  const headers = [
-    'Claim ID',
-    'Travel Date',
-    'Work Location',
-    'Amount',
-    'Status',
-    'Submitted At',
-  ]
+// FIX [ISSUE#2] — Extracted headers and row mapper for streaming export reuse
+export const MY_CLAIMS_CSV_HEADERS = [
+  'Claim ID',
+  'Travel Date',
+  'Work Location',
+  'Amount',
+  'Status',
+  'Submitted At',
+]
 
-  const bodyRows = rows.map((row) => [
+export function mapMyClaimToCsvRow(row: Claim): string[] {
+  return [
     row.claim_number,
     formatDate(row.claim_date),
     row.work_location,
     `Rs. ${row.total_amount.toFixed(2)}`,
     row.statusName,
     row.submitted_at ? formatDatetime(row.submitted_at) : '-',
-  ])
+  ]
+}
 
-  return [headers, ...bodyRows]
-    .map((cells) =>
-      cells.map((cell) => normalizeCsvCell(String(cell))).join(',')
-    )
+export function buildMyClaimsCsv(rows: Claim[]): string {
+  const bodyRows = rows.map(mapMyClaimToCsvRow)
+
+  return [MY_CLAIMS_CSV_HEADERS, ...bodyRows]
+    .map((cells) => cells.map((cell) => toCsvCell(String(cell))).join(','))
     .join('\n')
 }

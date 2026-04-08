@@ -3,23 +3,25 @@ import {
   getEmployeeByEmail,
   hasApproverAssignments,
 } from '@/lib/services/employee-service'
-import {
-  getAllFilteredApprovalHistory,
-  getFilteredApprovalHistoryPaginated,
-} from '@/features/approvals/queries/history-filters'
+import { getFilteredApprovalHistoryPaginated } from '@/features/approvals/queries/history-filters'
 import {
   buildApprovalHistoryCsv,
   normalizeApprovalHistoryFilters,
+  APPROVAL_HISTORY_CSV_HEADERS,
+  mapApprovalHistoryToCsvRow,
 } from '@/features/approvals/utils/history-filters'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import {
+  buildDatedCsvFilename,
+  createCsvErrorResponse,
+  createCsvResponse,
+  createExportRouteHandlers,
+  getExportMode,
+} from '@/lib/utils/export-route'
+// FIX [ISSUE#2] — Streaming chunked export to eliminate unbounded in-memory arrays
+import { createStreamingCsvResponse } from '@/lib/utils/streaming-export'
 
 const PAGE_EXPORT_LIMIT = 10
-
-type ExportMode = 'page' | 'all'
-
-function getExportMode(value: string | null): ExportMode {
-  return value === 'all' ? 'all' : 'page'
-}
 
 async function handleExportRequest(request: Request) {
   try {
@@ -66,42 +68,31 @@ async function handleExportRequest(request: Request) {
       return new Response('Access denied.', { status: 403 })
     }
 
-    const rows =
-      mode === 'all'
-        ? await getAllFilteredApprovalHistory(supabase, filters)
-        : (
-            await getFilteredApprovalHistoryPaginated(
-              supabase,
-              historyCursor,
-              PAGE_EXPORT_LIMIT,
-              filters
-            )
-          ).data
+    const filename = buildDatedCsvFilename('approvals-history', mode)
 
-    const csv = buildApprovalHistoryCsv(rows)
-    const dateStamp = new Date().toISOString().slice(0, 10)
-    const filename = `approvals-history-${mode}-${dateStamp}.csv`
+    // FIX [ISSUE#2] — Stream export-all instead of holding full dataset in memory
+    if (mode === 'all') {
+      return createStreamingCsvResponse({
+        fetcher: (cursor, limit) =>
+          getFilteredApprovalHistoryPaginated(supabase, cursor, limit, filters),
+        headers: APPROVAL_HISTORY_CSV_HEADERS,
+        mapRow: mapApprovalHistoryToCsvRow,
+        filename,
+      })
+    }
 
-    return new Response(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'no-store',
-      },
-    })
-  } catch (error) {
-    return new Response(
-      error instanceof Error ? error.message : 'Failed to export CSV.',
-      { status: 400 }
+    const paginated = await getFilteredApprovalHistoryPaginated(
+      supabase,
+      historyCursor,
+      PAGE_EXPORT_LIMIT,
+      filters
     )
+    const csv = buildApprovalHistoryCsv(paginated.data)
+
+    return createCsvResponse(csv, filename)
+  } catch (error) {
+    return createCsvErrorResponse(error)
   }
 }
 
-export async function GET(request: Request) {
-  return handleExportRequest(request)
-}
-
-export async function POST(request: Request) {
-  return handleExportRequest(request)
-}
+export const { GET, POST } = createExportRouteHandlers(handleExportRequest)

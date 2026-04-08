@@ -127,7 +127,7 @@ export default async function ClaimsPage({ searchParams }: ClaimsPageProps) {
       ),
       getClaimStatusCatalog(supabase),
       getAllWorkLocations(supabase),
-      getMyClaimsStats(supabase, employee.id, normalizedFilters),
+      getMyClaimsStats(supabase, employee.id),
       getMyClaimsTotalCount(supabase, employee.id, normalizedFilters),
     ])
 

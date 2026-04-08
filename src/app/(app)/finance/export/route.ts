@@ -1,21 +1,23 @@
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
-import {
-  getAllFilteredFinanceHistory,
-  getFinanceHistoryPaginated,
-} from '@/features/finance/queries'
+import { getFinanceHistoryPaginated } from '@/features/finance/queries'
 import {
   buildFinanceHistoryCsv,
   normalizeFinanceFilters,
+  FINANCE_HISTORY_CSV_HEADERS,
+  mapFinanceHistoryToCsvRow,
 } from '@/features/finance/utils/filters'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import {
+  buildDatedCsvFilename,
+  createCsvErrorResponse,
+  createCsvResponse,
+  createExportRouteHandlers,
+  getExportMode,
+} from '@/lib/utils/export-route'
 import { normalizeCursorPageSize } from '@/lib/utils/pagination'
-
-type ExportMode = 'page' | 'all'
-
-function getExportMode(value: string | null): ExportMode {
-  return value === 'all' ? 'all' : 'page'
-}
+// FIX [ISSUE#2] — Streaming chunked export to eliminate unbounded in-memory arrays
+import { createStreamingCsvResponse } from '@/lib/utils/streaming-export'
 
 async function handleExportRequest(request: Request) {
   try {
@@ -58,42 +60,31 @@ async function handleExportRequest(request: Request) {
       return new Response('Finance access is required.', { status: 403 })
     }
 
-    const rows =
-      mode === 'all'
-        ? await getAllFilteredFinanceHistory(supabase, effectiveFilters)
-        : (
-            await getFinanceHistoryPaginated(
-              supabase,
-              historyCursor,
-              pageSize,
-              effectiveFilters
-            )
-          ).data
+    const filename = buildDatedCsvFilename('approved-history', mode)
 
-    const csv = buildFinanceHistoryCsv(rows)
-    const dateStamp = new Date().toISOString().slice(0, 10)
-    const filename = `approved-history-${mode}-${dateStamp}.csv`
+    // FIX [ISSUE#2] — Stream export-all instead of holding full dataset in memory
+    if (mode === 'all') {
+      return createStreamingCsvResponse({
+        fetcher: (cursor, limit) =>
+          getFinanceHistoryPaginated(supabase, cursor, limit, effectiveFilters),
+        headers: FINANCE_HISTORY_CSV_HEADERS,
+        mapRow: mapFinanceHistoryToCsvRow,
+        filename,
+      })
+    }
 
-    return new Response(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Cache-Control': 'no-store',
-      },
-    })
-  } catch (error) {
-    return new Response(
-      error instanceof Error ? error.message : 'Failed to export CSV.',
-      { status: 400 }
+    const paginated = await getFinanceHistoryPaginated(
+      supabase,
+      historyCursor,
+      pageSize,
+      effectiveFilters
     )
+    const csv = buildFinanceHistoryCsv(paginated.data)
+
+    return createCsvResponse(csv, filename)
+  } catch (error) {
+    return createCsvErrorResponse(error)
   }
 }
 
-export async function GET(request: Request) {
-  return handleExportRequest(request)
-}
-
-export async function POST(request: Request) {
-  return handleExportRequest(request)
-}
+export const { GET, POST } = createExportRouteHandlers(handleExportRequest)

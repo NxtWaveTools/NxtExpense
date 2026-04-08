@@ -13,9 +13,14 @@ import {
 
 import type {
   DesignationBreakdown,
-  StateBreakdown,
   WorkLocationBreakdown,
 } from '@/features/dashboard/types/finance-dashboard'
+
+// Re-export charts that were extracted to keep existing imports stable
+export {
+  ClaimsByStateChart,
+  AvgAmountByDesignationChart,
+} from './finance-chart-extras'
 
 const AXIS_STYLE = {
   fontSize: 11,
@@ -243,156 +248,6 @@ export function ClaimsByWorkLocationChart({
               <Cell key={entry.label} fill={entry.fill} />
             ))}
           </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  )
-}
-
-export function ClaimsByStateChart({ data }: { data: StateBreakdown[] }) {
-  if (data.length === 0) {
-    return (
-      <ChartCard
-        title="Claims by State"
-        subtitle="State-level reimbursement spend visibility"
-      >
-        <EmptyChart />
-      </ChartCard>
-    )
-  }
-
-  const chartData = data.map((row) => ({
-    label: row.state_name,
-    amount: Number(row.total_amount),
-  }))
-
-  return (
-    <ChartCard
-      title="Claims by State"
-      subtitle="State-level reimbursement spend visibility"
-    >
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData}>
-          <defs>
-            <linearGradient
-              id="stateAmountGradient"
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.95} />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity={0.85} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="2 5"
-            vertical={false}
-            stroke="#cbd5e1"
-            strokeOpacity={0.45}
-          />
-          <XAxis
-            dataKey="label"
-            angle={-20}
-            textAnchor="end"
-            height={60}
-            tick={AXIS_STYLE}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tickFormatter={formatShortINR}
-            tick={AXIS_STYLE}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            content={<ChartTooltip />}
-            cursor={{ fill: '#f1f5f9', opacity: 0.55 }}
-          />
-          <Bar
-            dataKey="amount"
-            fill="url(#stateAmountGradient)"
-            radius={[12, 12, 0, 0]}
-            barSize={22}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartCard>
-  )
-}
-
-export function AvgAmountByDesignationChart({
-  data,
-}: {
-  data: DesignationBreakdown[]
-}) {
-  if (data.length === 0) {
-    return (
-      <ChartCard
-        title="Average Claim by Designation"
-        subtitle="Average claim value for each designation"
-      >
-        <EmptyChart />
-      </ChartCard>
-    )
-  }
-
-  const chartData = data.map((row) => ({
-    label: row.designation_name,
-    average: Number(row.avg_amount),
-  }))
-
-  return (
-    <ChartCard
-      title="Average Claim by Designation"
-      subtitle="Average claim value for each designation"
-    >
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData} layout="vertical" margin={{ left: 20 }}>
-          <defs>
-            <linearGradient
-              id="designationAverageGradient"
-              x1="0"
-              y1="0"
-              x2="1"
-              y2="0"
-            >
-              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.95} />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.9} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="2 5"
-            vertical={false}
-            stroke="#cbd5e1"
-            strokeOpacity={0.45}
-          />
-          <XAxis
-            type="number"
-            tickFormatter={formatShortINR}
-            tick={AXIS_STYLE}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={150}
-            tick={AXIS_STYLE}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            content={<ChartTooltip />}
-            cursor={{ fill: '#f1f5f9', opacity: 0.55 }}
-          />
-          <Bar
-            dataKey="average"
-            fill="url(#designationAverageGradient)"
-            radius={[12, 12, 12, 12]}
-            barSize={16}
-          />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
