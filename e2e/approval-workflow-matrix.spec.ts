@@ -16,6 +16,7 @@ import {
 import { ClaimsPage } from './pages/claims.page'
 import { ApprovalsPage } from './pages/approvals.page'
 import { FinancePage } from './pages/finance.page'
+import { fillRandomPayableClaimInputs } from './utils/random-claim-input'
 type LoginAs = (email: string) => Promise<void>
 type WorkflowPath = {
   submitterEmail: string
@@ -52,6 +53,67 @@ function toIsoDateDaysBack(daysBack: number): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+function normalizeLocationLabelForMatch(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[–—]/g, '-')
+    .replace(/\s*\/\s*/g, '/')
+    .replace(/[^a-z0-9/]/g, '')
+}
+
+function isOfficeWfhLocationLabel(value: string): boolean {
+  const normalized = normalizeLocationLabelForMatch(value)
+
+  return normalized === 'office/wfh'
+    ? true
+    : normalized.includes('office') && normalized.includes('wfh')
+}
+
+async function ensureClaimFormReady(
+  page: Page,
+  claims: ClaimsPage
+): Promise<void> {
+  if (new URL(page.url()).pathname !== '/claims/new') {
+    await claims.gotoNewClaim()
+  }
+
+  await expect(page).toHaveURL(/\/claims\/new(?:\?.*)?$/, {
+    timeout: 20_000,
+  })
+  await expect(claims.dateInput).toBeVisible({ timeout: 20_000 })
+  await expect(claims.workLocationSelect).toBeVisible({ timeout: 20_000 })
+}
+
+async function selectOfficeWorkLocation(
+  page: Page,
+  claims: ClaimsPage
+): Promise<void> {
+  const maxAttempts = 3
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    await ensureClaimFormReady(page, claims)
+
+    const options = await claims.getWorkLocationOptions()
+    const officeOption = options.find((option) =>
+      isOfficeWfhLocationLabel(option.label)
+    )
+
+    if (officeOption) {
+      await claims.selectWorkLocationByValue(officeOption.value)
+      return
+    }
+
+    await page.waitForTimeout(250)
+  }
+
+  const options = await claims.getWorkLocationOptions()
+  throw new Error(
+    `Unable to find Office/WFH work location. Available options: ${options
+      .map((option) => option.label)
+      .join(', ')}`
+  )
+}
+
 async function submitOfficeClaimAndGetClaimNumber(
   page: Page,
   loginAs: LoginAs,
@@ -60,12 +122,14 @@ async function submitOfficeClaimAndGetClaimNumber(
   await loginAsFresh(page, loginAs, submitterEmail)
   const claims = new ClaimsPage(page)
   await claims.gotoNewClaim()
-  await claims.ensureNewClaimFormReady()
-  const randomOffset = Math.floor(Math.random() * 120)
-  const candidateDaysBack = Array.from(
-    { length: 120 },
-    (_, i) => 1 + ((i + randomOffset) % 120)
-  )
+  await ensureClaimFormReady(page, claims)
+  const randomOffset = Math.floor(Math.random() * 997)
+  const candidateDaysBack = [
+    ...Array.from({ length: 31 }, (_, i) => i + randomOffset),
+    ...Array.from({ length: 30 }, (_, i) => 35 + i * 5 + randomOffset),
+    ...Array.from({ length: 18 }, (_, i) => 210 + i * 30 + randomOffset),
+    ...Array.from({ length: 25 }, (_, i) => 760 + i * 120 + randomOffset),
+  ]
   let permanentlyClosedStreak = 0
   let submitted = false
   let submittedClaimNumber: string | null = null
@@ -74,9 +138,8 @@ async function submitOfficeClaimAndGetClaimNumber(
   for (const daysBack of candidateDaysBack) {
     const claimDateIso = toIsoDateDaysBack(daysBack)
 
-    await claims.ensureNewClaimFormReady()
-    await claims.fillClaimDate(claimDateIso)
-    await claims.selectWorkLocationByName('Office / WFH')
+    await ensureClaimFormReady(page, claims)
+    await fillRandomPayableClaimInputs(page, claims, claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
     await claims.submitButton.click()
 
@@ -104,7 +167,7 @@ async function submitOfficeClaimAndGetClaimNumber(
 
       if (!submitButtonEnabled) {
         await claims.gotoNewClaim()
-        await claims.ensureNewClaimFormReady()
+        await ensureClaimFormReady(page, claims)
         continue
       }
 
@@ -128,7 +191,7 @@ async function submitOfficeClaimAndGetClaimNumber(
 
     const currentPath = new URL(page.url()).pathname
     if (currentPath !== '/claims/new') {
-      await claims.ensureNewClaimFormReady()
+      await ensureClaimFormReady(page, claims)
     }
 
     const duplicateDateError =
@@ -257,6 +320,12 @@ async function releaseClaimFromApprovedHistory(
   await expect(finance.bulkReleaseButton).toBeEnabled()
   await finance.bulkReleaseButton.click()
 
+  await expect(
+    page
+      .getByRole('region', { name: /notifications/i })
+      .getByText(/release|completed successfully/i)
+  ).toBeVisible({ timeout: 15_000 })
+
   await expect
     .poll(
       async () => {
@@ -269,7 +338,7 @@ async function releaseClaimFromApprovedHistory(
         )
       },
       {
-        timeout: 30_000,
+        timeout: 90_000,
       }
     )
     .toContain('Payment Released')

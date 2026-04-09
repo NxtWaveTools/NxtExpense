@@ -12,6 +12,7 @@ import {
 import { ApprovalsPage } from './pages/approvals.page'
 import { ClaimsPage } from './pages/claims.page'
 import { FinancePage } from './pages/finance.page'
+import { fillRandomPayableClaimInputs } from './utils/random-claim-input'
 
 type LoginAs = (email: string) => Promise<void>
 
@@ -67,8 +68,7 @@ async function submitOfficeClaimAndGetClaimNumber(
     const claimDateIso = toIsoDateDaysBack(daysBack)
 
     await claims.ensureNewClaimFormReady()
-    await claims.fillClaimDate(claimDateIso)
-    await claims.selectWorkLocationByName('Office / WFH')
+    await fillRandomPayableClaimInputs(page, claims, claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
     await claims.submitButton.click()
 

@@ -36,7 +36,7 @@ test.describe('Edge Cases', () => {
     expect(page.url()).toContain('/claims/new')
   })
 
-  test('EDGE-005: 2W KM limit enforced at 150 (client-side)', async ({
+  test('EDGE-005: 2W KM limit enforced at 200 (client-side)', async ({
     page,
     loginAs,
   }) => {
@@ -54,6 +54,14 @@ test.describe('Edge Cases', () => {
     await claims.dateInput.fill(`${yyyy}-${mm}-${dd}`)
     await claims.selectWorkLocationByName('Field - Outstation')
     await claims.intercityOwnVehicleYesButton.click()
+    await expect(
+      page.getByText(
+        /Inter-city KM Travelled \(Total distance including To & Fro travel\)/i
+      )
+    ).toBeVisible()
+    await expect(
+      page.getByText(/fixed intra-city fuel allowance/i)
+    ).toHaveCount(0)
     await claims.outstationStateSelect.selectOption({ index: 1 })
     await claims.vehicleTypeSelect.selectOption('Two Wheeler')
     await expect
@@ -78,7 +86,7 @@ test.describe('Edge Cases', () => {
       const dd = String(candidateDate.getDate()).padStart(2, '0')
 
       await claims.dateInput.fill(`${yyyy}-${mm}-${dd}`)
-      await claims.kmInput.fill('151')
+      await claims.kmInput.fill('201')
       await claims.submitButton.click()
 
       try {
@@ -124,7 +132,7 @@ test.describe('Edge Cases', () => {
         continue
       }
 
-      await expect(page.getByText(/150|km.*limit|exceed/i).first()).toBeVisible(
+      await expect(page.getByText(/200|km.*limit|exceed/i).first()).toBeVisible(
         {
           timeout: 5_000,
         }

@@ -4,6 +4,7 @@ import { test, expect } from './fixtures/auth'
 import { PM_MANSOOR, SBH_AP, SRO_AP } from './fixtures/test-accounts'
 import { ApprovalsPage } from './pages/approvals.page'
 import { ClaimsPage } from './pages/claims.page'
+import { fillRandomPayableClaimInputs } from './utils/random-claim-input'
 
 type LoginAs = (email: string) => Promise<void>
 
@@ -46,24 +47,60 @@ async function submitOfficeClaimAndGetClaimNumber(
   await claims.gotoNewClaim()
   await claims.ensureNewClaimFormReady()
 
-  const randomOffset = Math.floor(Math.random() * 120)
-  const candidateDaysBack = Array.from(
-    { length: 120 },
-    (_, i) => 1 + ((i + randomOffset) % 120)
-  )
+  const randomOffset = Math.floor(Math.random() * 997)
+  const candidateDaysBack = [
+    ...Array.from({ length: 31 }, (_, i) => i + randomOffset),
+    ...Array.from({ length: 30 }, (_, i) => 35 + i * 5 + randomOffset),
+    ...Array.from({ length: 18 }, (_, i) => 210 + i * 30 + randomOffset),
+    ...Array.from({ length: 25 }, (_, i) => 760 + i * 120 + randomOffset),
+  ]
 
   for (const daysBack of candidateDaysBack) {
     const claimDateIso = toIsoDateDaysBack(daysBack)
 
     await claims.ensureNewClaimFormReady()
-    await claims.fillClaimDate(claimDateIso)
-    await claims.selectWorkLocationByName('Office / WFH')
+    await fillRandomPayableClaimInputs(page, claims, claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
     await claims.submitButton.click()
 
+    let navigatedToClaims = false
+    try {
+      await page.waitForURL((url: URL) => url.pathname === '/claims', {
+        timeout: 5_000,
+      })
+      navigatedToClaims = true
+    } catch {
+      await page.waitForTimeout(250)
+    }
+
+    const currentPath = new URL(page.url()).pathname
+
+    const duplicateDateError =
+      (await page
+        .getByText(
+          /already have a pending or approved claim for this date|already have .*claim for this date|claim already submitted for this date/i
+        )
+        .count()) > 0
+    const duplicateConstraintError =
+      (await page
+        .getByText(/duplicate key value violates unique constraint/i)
+        .count()) > 0
+    const permanentlyClosedError =
+      (await page.getByText(/permanently closed/i).count()) > 0
+
+    if (
+      duplicateDateError ||
+      duplicateConstraintError ||
+      permanentlyClosedError
+    ) {
+      continue
+    }
+
     const submittedClaimNumber =
-      (await claims.getSubmittedClaimNumberFromSuccessToast(6_000)) ??
-      (new URL(page.url()).pathname === '/claims'
+      (await claims.getSubmittedClaimNumberFromSuccessToast(
+        navigatedToClaims ? 1_500 : 2_500
+      )) ??
+      (currentPath === '/claims'
         ? await claims.getClaimNumberForDate(claimDateIso)
         : null)
 
@@ -72,22 +109,10 @@ async function submitOfficeClaimAndGetClaimNumber(
       return submittedClaimNumber
     }
 
-    const duplicateDateError =
-      (await page
-        .getByText(
-          /already have .*claim for this date|claim already submitted for this date/i
-        )
-        .count()) > 0
-    const duplicateConstraintError =
-      (await page
-        .getByText(/duplicate key value violates unique constraint/i)
-        .count()) > 0
-
-    if (duplicateDateError || duplicateConstraintError) {
-      continue
+    if (currentPath !== '/claims/new') {
+      await claims.gotoNewClaim()
+      await claims.ensureNewClaimFormReady()
     }
-
-    await claims.gotoNewClaim()
   }
 
   throw new Error('Could not submit a fresh claim using fallback date search.')

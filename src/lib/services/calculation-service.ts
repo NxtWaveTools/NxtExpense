@@ -2,8 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
   getExpenseRateByType,
+  getIntracityAllowanceRateByVehicle,
   type VehicleType,
 } from '@/lib/services/config-service'
+import { getValidationRuleBoolean } from '@/lib/services/validation-rule-service'
 import {
   CLAIM_ITEM_TYPES,
   EXPENSE_RATE_TYPES,
@@ -23,6 +25,7 @@ type CalculatedExpenseItem = {
 /** Input for a base-location day calculation */
 type BaseLocationInput = {
   workLocationId: string
+  claimDateIso: string
   vehicleType: VehicleType
   includeFoodAllowance: boolean
 }
@@ -30,6 +33,7 @@ type BaseLocationInput = {
 /** Input for outstation with inter-city/intra-city segment selections */
 type OutstationTravelInput = {
   workLocationId: string
+  claimDateIso: string
   designationId: string
   hasIntercityTravel: boolean
   hasIntracityTravel: boolean
@@ -44,6 +48,7 @@ type OutstationTravelInput = {
 /** Input for accommodation rate lookup */
 type AccommodationInput = {
   workLocationId: string
+  claimDateIso: string
   designationId: string
 }
 
@@ -81,7 +86,8 @@ async function getAccommodationLimit(
     supabase,
     input.workLocationId,
     EXPENSE_RATE_TYPES.ACCOMMODATION,
-    input.designationId
+    input.designationId,
+    input.claimDateIso
   )
   if (!rate) return 0
   return Number(rate.rate_amount)
@@ -91,13 +97,15 @@ async function getAccommodationLimit(
 export async function getFoodWithPrincipalsLimit(
   supabase: SupabaseClient,
   workLocationId: string,
-  designationId: string
+  designationId: string,
+  claimDateIso?: string
 ): Promise<number> {
   const rate = await getExpenseRateByType(
     supabase,
     workLocationId,
     EXPENSE_RATE_TYPES.FOOD_WITH_PRINCIPALS,
-    designationId
+    designationId,
+    claimDateIso
   )
   if (!rate) return 0
   return Number(rate.rate_amount)
@@ -145,7 +153,8 @@ export async function calculateBaseLocationItems(
       supabase,
       input.workLocationId,
       EXPENSE_RATE_TYPES.FOOD_BASE,
-      null
+      null,
+      input.claimDateIso
     )
 
     if (foodRate) {
@@ -172,8 +181,8 @@ export async function calculateBaseLocationItems(
  * Calculate expense items for outstation with inter-city/intra-city segments.
  * - Food allowance is always added once for outstation claims.
  * - Inter-city own vehicle adds per-km reimbursement.
- * - Intra-city city-travel (own/rental) adds a fixed daily fuel allowance from vehicle_types.base_fuel_rate_per_day.
- * - Inter-city own vehicle implies intra-city allowance for the same day/vehicle.
+ * - Intra-city city-travel (own/rental) adds DB-configured daily allowance.
+ * - Whether inter-city travel also adds intra-city allowance is DB-driven.
  */
 export async function calculateOutstationTravelItems(
   supabase: SupabaseClient,
@@ -185,7 +194,8 @@ export async function calculateOutstationTravelItems(
     supabase,
     input.workLocationId,
     EXPENSE_RATE_TYPES.FOOD_OUTSTATION,
-    null
+    null,
+    input.claimDateIso
   )
 
   if (foodRate) {
@@ -199,8 +209,15 @@ export async function calculateOutstationTravelItems(
   const requiresVehicleType =
     input.hasIntercityTravel || input.hasIntracityTravel
 
+  const includeIntracityWhenIntercity = await getValidationRuleBoolean(
+    supabase,
+    'INTERCITY_AUTO_INTRACITY_ALLOWANCE_ENABLED',
+    false
+  )
+
   const includesIntracityAllowance =
-    input.hasIntercityTravel || input.hasIntracityTravel
+    input.hasIntracityTravel &&
+    (!input.hasIntercityTravel || includeIntracityWhenIntercity)
 
   if (requiresVehicleType && !input.vehicleType) {
     throw new Error('Vehicle type is required for selected own-vehicle travel.')
@@ -223,7 +240,13 @@ export async function calculateOutstationTravelItems(
   }
 
   if (includesIntracityAllowance && input.vehicleType) {
-    const intracityAllowance = Number(input.vehicleType.base_fuel_rate_per_day)
+    const intracityAllowance = await getIntracityAllowanceRateByVehicle(
+      supabase,
+      input.workLocationId,
+      input.vehicleType.vehicle_code,
+      input.claimDateIso
+    )
+
     const isRentalIntracityTravel =
       input.hasIntracityTravel &&
       !input.hasIntercityTravel &&
@@ -243,6 +266,7 @@ export async function calculateOutstationTravelItems(
   if (input.accommodationNights && input.accommodationNights > 0) {
     const accommodationRate = await getAccommodationLimit(supabase, {
       workLocationId: input.workLocationId,
+      claimDateIso: input.claimDateIso,
       designationId: input.designationId,
     })
 
@@ -259,7 +283,8 @@ export async function calculateOutstationTravelItems(
     const fwpLimit = await getFoodWithPrincipalsLimit(
       supabase,
       input.workLocationId,
-      input.designationId
+      input.designationId,
+      input.claimDateIso
     )
 
     if (fwpLimit > 0) {

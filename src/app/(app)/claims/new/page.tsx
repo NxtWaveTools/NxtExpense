@@ -14,7 +14,9 @@ import {
   getAllStates,
   getVehicleTypesByDesignation,
   getExpenseRateByType,
+  getIntracityAllowanceRateByVehicle,
 } from '@/lib/services/config-service'
+import { getValidationRuleBoolean } from '@/lib/services/validation-rule-service'
 import type { BaseLocationDayTypeOption } from '@/features/claims/types'
 
 export default async function NewClaimPage() {
@@ -69,17 +71,30 @@ export default async function NewClaimPage() {
   const outstationLocationId = workLocations.find(
     (wl) => wl.location_code === 'FIELD_OUTSTATION'
   )?.id
+  const todayIso = new Date().toISOString().slice(0, 10)
 
-  const [foodBaseRate, foodOutstationRate, fwpRate] = await Promise.all([
+  const [
+    foodBaseRate,
+    foodOutstationRate,
+    fwpRate,
+    intercityAutoIntracityAllowanceEnabled,
+  ] = await Promise.all([
     baseLocationId
-      ? getExpenseRateByType(supabase, baseLocationId, 'FOOD_BASE', null)
+      ? getExpenseRateByType(
+          supabase,
+          baseLocationId,
+          'FOOD_BASE',
+          null,
+          todayIso
+        )
       : Promise.resolve(null),
     outstationLocationId
       ? getExpenseRateByType(
           supabase,
           outstationLocationId,
           'FOOD_OUTSTATION',
-          null
+          null,
+          todayIso
         )
       : Promise.resolve(null),
     outstationLocationId && employee.designation_id
@@ -87,14 +102,33 @@ export default async function NewClaimPage() {
           supabase,
           outstationLocationId,
           'FOOD_WITH_PRINCIPALS',
-          employee.designation_id
+          employee.designation_id,
+          todayIso
         )
       : Promise.resolve(null),
+    getValidationRuleBoolean(
+      supabase,
+      'INTERCITY_AUTO_INTRACITY_ALLOWANCE_ENABLED',
+      false
+    ),
   ])
 
-  const intracityDailyByVehicle = Object.fromEntries(
-    allowedVehicles.map((vt) => [vt.id, Number(vt.base_fuel_rate_per_day)])
-  ) as Record<string, number>
+  const intracityDailyByVehicle = outstationLocationId
+    ? (Object.fromEntries(
+        await Promise.all(
+          allowedVehicles.map(async (vt) => {
+            const intracityRate = await getIntracityAllowanceRateByVehicle(
+              supabase,
+              outstationLocationId,
+              vt.vehicle_code,
+              todayIso
+            )
+
+            return [vt.id, intracityRate]
+          })
+        )
+      ) as Record<string, number>)
+    : ({} as Record<string, number>)
 
   const baseDayTypeIncludeFoodByCode = Object.fromEntries(
     baseLocationDayTypeOptions.map((option) => [
@@ -131,6 +165,7 @@ export default async function NewClaimPage() {
       allowedVehicles.map((vt) => [vt.id, Number(vt.max_km_round_trip)])
     ) as Record<string, number>,
     foodWithPrincipalsMax: fwpRate ? Number(fwpRate.rate_amount) : null,
+    intercityAutoIntracityAllowanceEnabled,
   }
 
   return (

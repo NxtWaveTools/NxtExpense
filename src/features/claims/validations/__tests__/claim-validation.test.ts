@@ -25,7 +25,7 @@ describe('claimSubmissionSchema', () => {
     expect(parsed.success).toBe(true)
   })
 
-  it('accepts 2W outstation claim above 150km at schema level (KM limit validated server-side)', () => {
+  it('accepts 2W outstation claim above 200km at schema level (KM limit validated server-side)', () => {
     const parsed = claimSubmissionSchema.safeParse({
       claimDate: '06/03/2026',
       workLocation: 'Field - Outstation',

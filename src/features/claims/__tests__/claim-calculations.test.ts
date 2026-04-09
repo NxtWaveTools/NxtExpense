@@ -5,29 +5,29 @@ import { buildClaimItemsAndTotal } from '@/features/claims/utils/calculations'
 // ── Rates from expense_rules.json ───────────────────────────────────────────
 
 const BASE_RATES_2W = {
-  foodBase: 120,
+  foodBase: 170,
   fuelBase: 180,
 }
 
 const BASE_RATES_4W = {
-  foodBase: 120,
+  foodBase: 170,
   fuelBase: 300,
 }
 
 const OUTSTATION_RATES_2W = {
-  foodOutstation: 350,
+  foodOutstation: 400,
   intercityRate: 5,
 }
 
 const OUTSTATION_RATES_4W = {
-  foodOutstation: 350,
+  foodOutstation: 400,
   intercityRate: 8,
 }
 
 // ── Base Location Calculations (SUBMIT-001, SUBMIT-003) ─────────────────────
 
 describe('buildClaimItemsAndTotal — Field - Base Location', () => {
-  it('calculates ₹300 for 2W base location (SUBMIT-001)', () => {
+  it('calculates ₹350 for 2W base location (SUBMIT-001)', () => {
     const result = buildClaimItemsAndTotal(
       {
         workLocation: 'Field - Base Location',
@@ -36,13 +36,13 @@ describe('buildClaimItemsAndTotal — Field - Base Location', () => {
       },
       BASE_RATES_2W
     )
-    expect(result.total).toBe(300)
+    expect(result.total).toBe(350)
     expect(result.items).toHaveLength(2)
-    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 120 })
+    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 170 })
     expect(result.items[1]).toMatchObject({ itemType: 'fuel', amount: 180 })
   })
 
-  it('calculates ₹420 for 4W base location (SUBMIT-007)', () => {
+  it('calculates ₹470 for 4W base location (SUBMIT-007)', () => {
     const result = buildClaimItemsAndTotal(
       {
         workLocation: 'Field - Base Location',
@@ -51,9 +51,9 @@ describe('buildClaimItemsAndTotal — Field - Base Location', () => {
       },
       BASE_RATES_4W
     )
-    expect(result.total).toBe(420)
+    expect(result.total).toBe(470)
     expect(result.items).toHaveLength(2)
-    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 120 })
+    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 170 })
     expect(result.items[1]).toMatchObject({ itemType: 'fuel', amount: 300 })
   })
 
@@ -90,7 +90,7 @@ describe('buildClaimItemsAndTotal — Field - Base Location', () => {
 // ── Outstation with Own Vehicle (SUBMIT-002, SUBMIT-005) ────────────────────
 
 describe('buildClaimItemsAndTotal — Field - Outstation (own vehicle)', () => {
-  it('calculates ₹850 for 2W outstation 100km (SUBMIT-002)', () => {
+  it('calculates ₹900 for 2W outstation 100km (SUBMIT-002)', () => {
     const result = buildClaimItemsAndTotal(
       {
         workLocation: 'Field - Outstation',
@@ -101,16 +101,16 @@ describe('buildClaimItemsAndTotal — Field - Outstation (own vehicle)', () => {
       },
       OUTSTATION_RATES_2W
     )
-    expect(result.total).toBe(850) // 350 food + 500 (100 * 5)
+    expect(result.total).toBe(900) // 400 food + 500 (100 * 5)
     expect(result.items).toHaveLength(2)
-    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 350 })
+    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 400 })
     expect(result.items[1]).toMatchObject({
       itemType: 'intercity_travel',
       amount: 500,
     })
   })
 
-  it('calculates ₹1150 for 4W outstation 100km (SUBMIT-005)', () => {
+  it('calculates ₹1200 for 4W outstation 100km (SUBMIT-005)', () => {
     const result = buildClaimItemsAndTotal(
       {
         workLocation: 'Field - Outstation',
@@ -121,27 +121,27 @@ describe('buildClaimItemsAndTotal — Field - Outstation (own vehicle)', () => {
       },
       OUTSTATION_RATES_4W
     )
-    expect(result.total).toBe(1150) // 350 food + 800 (100 * 8)
+    expect(result.total).toBe(1200) // 400 food + 800 (100 * 8)
     expect(result.items).toHaveLength(2)
-    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 350 })
+    expect(result.items[0]).toMatchObject({ itemType: 'food', amount: 400 })
     expect(result.items[1]).toMatchObject({
       itemType: 'intercity_travel',
       amount: 800,
     })
   })
 
-  it('calculates ₹1100 for 2W outstation at max 150km', () => {
+  it('calculates ₹1400 for 2W outstation at max 200km', () => {
     const result = buildClaimItemsAndTotal(
       {
         workLocation: 'Field - Outstation',
         requiresOutstationDetails: true,
         ownVehicleUsed: true,
         vehicleType: 'Two Wheeler',
-        kmTravelled: 150,
+        kmTravelled: 200,
       },
       OUTSTATION_RATES_2W
     )
-    expect(result.total).toBe(1100) // 350 + 750 (150 * 5)
+    expect(result.total).toBe(1400) // 400 + 1000 (200 * 5)
   })
 
   it('calculates ₹2750 for 4W outstation at max 300km', () => {
@@ -155,7 +155,7 @@ describe('buildClaimItemsAndTotal — Field - Outstation (own vehicle)', () => {
       },
       OUTSTATION_RATES_4W
     )
-    expect(result.total).toBe(2750) // 350 + 2400 (300 * 8)
+    expect(result.total).toBe(2800) // 400 + 2400 (300 * 8)
   })
 
   it('handles 1km minimum distance', () => {
@@ -169,7 +169,7 @@ describe('buildClaimItemsAndTotal — Field - Outstation (own vehicle)', () => {
       },
       OUTSTATION_RATES_2W
     )
-    expect(result.total).toBe(355) // 350 + 5 (1 * 5)
+    expect(result.total).toBe(405) // 400 + 5 (1 * 5)
   })
 
   it('generates intercity travel description with KM and rate', () => {
@@ -248,9 +248,9 @@ describe('buildClaimItemsAndTotal — missing rates fallback to 0', () => {
         vehicleType: 'Two Wheeler',
         kmTravelled: 100,
       },
-      { foodOutstation: 350 }
+      { foodOutstation: 400 }
     )
     expect(result.items[1]?.amount).toBe(0) // 100 * 0 = 0
-    expect(result.total).toBe(350)
+    expect(result.total).toBe(400)
   })
 })

@@ -292,7 +292,8 @@ export function OutstationFields(props: OutstationFieldsProps) {
                   className="size-4 text-muted-foreground"
                   aria-hidden="true"
                 />
-                Inter-city KM Travelled
+                Inter-city KM Travelled (Total distance including To &amp; Fro
+                travel)
               </span>
               <input
                 name="kmTravelled"

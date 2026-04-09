@@ -57,3 +57,5 @@ proposed-schema.sql
 playwright-report/
 test-results/
 .agents
+prod_schema.sql
+test_schema.sql
