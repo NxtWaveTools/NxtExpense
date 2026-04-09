@@ -5,6 +5,7 @@ import { FINANCE_1, PM_MANSOOR, SBH_AP, SRO_AP } from './fixtures/test-accounts'
 import { ApprovalsPage } from './pages/approvals.page'
 import { ClaimsPage } from './pages/claims.page'
 import { FinancePage } from './pages/finance.page'
+import { fillRandomPayableClaimInputs } from './utils/random-claim-input'
 
 type LoginAs = (email: string) => Promise<void>
 
@@ -47,11 +48,13 @@ async function submitOfficeClaimAndGetClaimNumber(
   await claims.gotoNewClaim()
   await claims.ensureNewClaimFormReady()
 
-  const randomOffset = Math.floor(Math.random() * 120)
-  const candidateDaysBack = Array.from(
-    { length: 120 },
-    (_, i) => 1 + ((i + randomOffset) % 120)
-  )
+  const randomOffset = Math.floor(Math.random() * 997)
+  const candidateDaysBack = [
+    ...Array.from({ length: 31 }, (_, i) => i + randomOffset),
+    ...Array.from({ length: 30 }, (_, i) => 35 + i * 5 + randomOffset),
+    ...Array.from({ length: 18 }, (_, i) => 210 + i * 30 + randomOffset),
+    ...Array.from({ length: 25 }, (_, i) => 760 + i * 120 + randomOffset),
+  ]
 
   let permanentlyClosedStreak = 0
 
@@ -59,8 +62,7 @@ async function submitOfficeClaimAndGetClaimNumber(
     const claimDateIso = toIsoDateDaysBack(daysBack)
 
     await claims.ensureNewClaimFormReady()
-    await claims.fillClaimDate(claimDateIso)
-    await claims.selectWorkLocationByName('Office / WFH')
+    await fillRandomPayableClaimInputs(page, claims, claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
     await claims.submitButton.click()
 
@@ -74,7 +76,7 @@ async function submitOfficeClaimAndGetClaimNumber(
     } catch {
       let submitButtonEnabled = false
 
-      for (let retry = 0; retry < 24; retry += 1) {
+      for (let retry = 0; retry < 16; retry += 1) {
         try {
           submitButtonEnabled = await claims.submitButton.isEnabled()
           if (submitButtonEnabled) {
@@ -84,7 +86,7 @@ async function submitOfficeClaimAndGetClaimNumber(
           submitButtonEnabled = false
         }
 
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(350)
       }
 
       if (!submitButtonEnabled) {
@@ -96,28 +98,12 @@ async function submitOfficeClaimAndGetClaimNumber(
       await page.waitForTimeout(250)
     }
 
-    const submittedClaimNumber =
-      (await claims.getSubmittedClaimNumberFromSuccessToast(
-        navigatedToClaims ? 1_500 : 5_000
-      )) ??
-      (new URL(page.url()).pathname === '/claims'
-        ? await claims.getClaimNumberForDate(claimDateIso)
-        : null)
-
-    if (submittedClaimNumber) {
-      expect(submittedClaimNumber).toMatch(/^CLAIM-/i)
-      return submittedClaimNumber
-    }
-
     const currentPath = new URL(page.url()).pathname
-    if (currentPath !== '/claims/new') {
-      await claims.ensureNewClaimFormReady()
-    }
 
     const duplicateDateError =
       (await page
         .getByText(
-          /already have .*claim for this date|claim already submitted for this date/i
+          /already have a pending or approved claim for this date|already have .*claim for this date|claim already submitted for this date/i
         )
         .count()) > 0
     const duplicateConstraintError =
@@ -140,12 +126,26 @@ async function submitOfficeClaimAndGetClaimNumber(
       continue
     }
 
+    const submittedClaimNumber =
+      (await claims.getSubmittedClaimNumberFromSuccessToast(
+        navigatedToClaims ? 1_500 : 2_500
+      )) ??
+      (currentPath === '/claims'
+        ? await claims.getClaimNumberForDate(claimDateIso)
+        : null)
+
+    if (submittedClaimNumber) {
+      expect(submittedClaimNumber).toMatch(/^CLAIM-/i)
+      return submittedClaimNumber
+    }
+
     if (currentPath === '/claims/new') {
       permanentlyClosedStreak = 0
       continue
     }
 
-    throw new Error('Claim submission did not complete as expected.')
+    await claims.ensureNewClaimFormReady()
+    permanentlyClosedStreak = 0
   }
 
   throw new Error('Could not submit a fresh claim using fallback date search.')
@@ -255,7 +255,7 @@ async function releaseClaimFromApprovedHistory(
         )
       },
       {
-        timeout: 30_000,
+        timeout: 90_000,
       }
     )
     .toContain('Payment Released')

@@ -183,7 +183,7 @@ describe('submitClaimAction', () => {
     mocks.calculateBaseLocationItems.mockResolvedValue({ items: [], total: 0 })
     mocks.getVehicleTypeById.mockResolvedValue({
       vehicle_name: 'Two Wheeler',
-      max_km_round_trip: 150,
+      max_km_round_trip: 200,
     })
     mocks.countFoodWithPrincipalsInMonth.mockResolvedValue(0)
     mocks.getFoodWithPrincipalsLimit.mockResolvedValue(0)

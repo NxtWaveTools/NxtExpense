@@ -10,6 +10,7 @@ import {
 } from './fixtures/test-accounts'
 import { ApprovalsPage } from './pages/approvals.page'
 import { ClaimsPage } from './pages/claims.page'
+import { fillRandomPayableClaimInputs } from './utils/random-claim-input'
 
 type LoginAs = (email: string) => Promise<void>
 
@@ -127,8 +128,7 @@ async function submitOfficeClaimAndGetClaimNumber(
     await ensureClaimFormReady(page, claims)
 
     const claimDateIso = toIsoDateDaysBack(daysBack)
-    await claims.fillClaimDate(claimDateIso)
-    await selectOfficeWorkLocation(page, claims)
+    await fillRandomPayableClaimInputs(page, claims, claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
     await claims.submitButton.click()
 

@@ -11,6 +11,7 @@ export type ClaimRateSnapshot = {
   intracityDailyByVehicle: Record<string, number>
   maxKmRoundTripByVehicle: Record<string, number>
   foodWithPrincipalsMax: number | null
+  intercityAutoIntracityAllowanceEnabled: boolean
 }
 
 type ClaimSummaryPreviewInput = {
@@ -56,7 +57,10 @@ export function getClaimSummaryPreview({
     const foodAllowance = claimRateSnapshot.foodOutstationDaily ?? 0
     items.push({ label: 'Food allowance', amount: foodAllowance })
 
-    const includesIntracityAllowance = hasIntercityTravel || hasIntracityTravel
+    const includesIntracityAllowance =
+      hasIntracityTravel &&
+      (!hasIntercityTravel ||
+        claimRateSnapshot.intercityAutoIntracityAllowanceEnabled)
     const isRentalIntracityTravel =
       hasIntracityTravel && !hasIntercityTravel && !intracityOwnVehicleUsed
 
@@ -73,12 +77,15 @@ export function getClaimSummaryPreview({
     if (includesIntracityAllowance) {
       const intracityAmount =
         claimRateSnapshot.intracityDailyByVehicle[vehicleType] ?? 0
-      items.push({
-        label: isRentalIntracityTravel
-          ? `${vehicleTypeName} fixed intra-city fuel allowance (rented vehicle travel)`
-          : `${vehicleTypeName} fixed intra-city fuel allowance`,
-        amount: intracityAmount,
-      })
+
+      if (intracityAmount > 0) {
+        items.push({
+          label: isRentalIntracityTravel
+            ? `${vehicleTypeName} fixed intra-city fuel allowance (rented vehicle travel)`
+            : `${vehicleTypeName} fixed intra-city fuel allowance`,
+          amount: intracityAmount,
+        })
+      }
     }
 
     // Food with Principals

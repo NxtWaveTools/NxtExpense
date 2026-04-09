@@ -168,6 +168,9 @@ export default async function ProfilePage() {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const displayName = employee.employee_id
+    ? `${employee.employee_name} (${employee.employee_id})`
+    : employee.employee_name
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
@@ -179,7 +182,7 @@ export default async function ProfilePage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              {employee.employee_name}
+              {displayName}
             </h1>
             <p className="text-sm text-muted-foreground">
               {employee.designations?.designation_name ?? ''} ·{' '}

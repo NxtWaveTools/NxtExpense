@@ -81,7 +81,7 @@
       ],
       "vehicle_type_options": ["Two Wheeler", "Four Wheeler"],
       "km_limits": {
-        "two_wheeler_round_trip_max_km": 150,
+        "two_wheeler_round_trip_max_km": 200,
         "four_wheeler_round_trip_max_km": 300
       },
       "intercity_travel_rate": {
@@ -100,6 +100,15 @@
         "two_wheeler_total": 850,
         "four_wheeler_total": 1150
       }
+    }
+  },
+  "seasonal_overrides": {
+    "april_may_2026": {
+      "effective_from": "2026-04-09",
+      "effective_to": "2026-05-31",
+      "food_base_location_per_day": 170,
+      "food_outstation_per_day": 400,
+      "note": "Temporary summer uplift for April-May only."
     }
   },
   "taxi_rules": {

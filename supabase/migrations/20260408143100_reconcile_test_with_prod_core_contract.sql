@@ -1,3 +1,4 @@
+-- Only in Test !! This migration is intended to reconcile schema drift between test and prod, ensuring that test follows prod's core public contract. It is safe to run multiple times without causing issues.
 BEGIN;
 
 -- Reconcile schema drift so test follows prod's core public contract.

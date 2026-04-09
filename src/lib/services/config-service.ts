@@ -275,17 +275,32 @@ export async function getAllClaimStatuses(
 const EXPENSE_RATE_COLUMNS =
   'id, designation_id, location_id, expense_type, rate_amount, effective_from, effective_to, is_active'
 
+function resolveAsOfDate(asOfDateIso?: string): string {
+  const normalized = (asOfDateIso ?? '').trim()
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized
+  }
+
+  return new Date().toISOString().slice(0, 10)
+}
+
 export async function getExpenseRateByType(
   supabase: SupabaseClient,
   locationId: string,
   expenseType: string,
-  designationId?: string | null
+  designationId?: string | null,
+  asOfDateIso?: string
 ): Promise<ExpenseRate | null> {
+  const asOfDate = resolveAsOfDate(asOfDateIso)
+
   let query = supabase
     .from('expense_rates')
     .select(EXPENSE_RATE_COLUMNS)
     .eq('location_id', locationId)
     .eq('expense_type', expenseType)
+    .lte('effective_from', asOfDate)
+    .or(`effective_to.is.null,effective_to.gte.${asOfDate}`)
     .eq('is_active', true)
 
   if (designationId) {
@@ -294,7 +309,11 @@ export async function getExpenseRateByType(
     query = query.is('designation_id', null)
   }
 
-  const { data, error } = await query.maybeSingle()
+  const { data, error } = await query
+    .order('effective_from', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (error) throw new Error(`Failed to fetch expense rate: ${error.message}`)
   return data as ExpenseRate | null
@@ -303,7 +322,8 @@ export async function getExpenseRateByType(
 export async function getIntracityAllowanceRateByVehicle(
   supabase: SupabaseClient,
   workLocationId: string,
-  vehicleCode: string
+  vehicleCode: string,
+  asOfDateIso?: string
 ): Promise<number> {
   const expenseType = getIntracityAllowanceRateTypeByVehicleCode(vehicleCode)
 
@@ -315,7 +335,8 @@ export async function getIntracityAllowanceRateByVehicle(
     supabase,
     workLocationId,
     expenseType,
-    null
+    null,
+    asOfDateIso
   )
 
   return rate ? Number(rate.rate_amount) : 0
