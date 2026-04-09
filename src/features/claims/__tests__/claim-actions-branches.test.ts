@@ -262,7 +262,7 @@ describe('submitClaimAction branch coverage', () => {
     })
     mocks.getVehicleTypeById.mockResolvedValue({
       vehicle_name: 'Two Wheeler',
-      max_km_round_trip: 150,
+      max_km_round_trip: 200,
     })
 
     mocks.calculateBaseLocationItems.mockResolvedValue({

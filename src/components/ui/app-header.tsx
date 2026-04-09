@@ -49,6 +49,9 @@ export async function AppHeader() {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const displayName = employee.employee_id
+    ? `${employee.employee_name} (${employee.employee_id})`
+    : employee.employee_name
 
   return (
     <header
@@ -81,7 +84,7 @@ export async function AppHeader() {
             </div>
             <div className="text-right">
               <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-foreground">
-                {employee.employee_name}
+                {displayName}
               </p>
               <p className="text-xs text-muted-foreground leading-tight">
                 {employee.designations?.designation_name ?? ''}

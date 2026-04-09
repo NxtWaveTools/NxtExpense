@@ -4,6 +4,7 @@ import { test, expect } from './fixtures/auth'
 import { PM_MANSOOR, SBH_AP, SRO_AP } from './fixtures/test-accounts'
 import { ApprovalsPage } from './pages/approvals.page'
 import { ClaimsPage } from './pages/claims.page'
+import { fillRandomPayableClaimInputs } from './utils/random-claim-input'
 
 type LoginAs = (email: string) => Promise<void>
 
@@ -81,8 +82,7 @@ async function submitOfficeClaimAndGetClaimNumber(
     const claimDateIso = toIsoDateDaysBack(daysBack)
 
     await claims.ensureNewClaimFormReady()
-    await claims.fillClaimDate(claimDateIso)
-    await claims.selectWorkLocationByName('Office / WFH')
+    await fillRandomPayableClaimInputs(page, claims, claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
     await claims.submitButton.click()
 
@@ -171,8 +171,7 @@ async function submitOfficeClaimForExactDate(
   await claims.gotoNewClaim()
   await claims.ensureNewClaimFormReady()
 
-  await claims.fillClaimDate(claimDateIso)
-  await claims.selectWorkLocationByName('Office / WFH')
+  await fillRandomPayableClaimInputs(page, claims, claimDateIso)
   await expect(claims.submitButton).toBeEnabled({ timeout: 60_000 })
   await claims.submitButton.click()
 

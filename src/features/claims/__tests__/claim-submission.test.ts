@@ -117,7 +117,7 @@ describe('claimSubmissionSchema — work location branches', () => {
     expect(parsed.success).toBe(true)
   })
 
-  it('accepts outstation own vehicle claim (2W at exact 150 km limit)', () => {
+  it('accepts outstation own vehicle claim (2W at exact 200 km limit)', () => {
     const parsed = claimSubmissionSchema.safeParse({
       claimDate: PAST_DATE,
       workLocation: 'Field - Outstation',
@@ -126,7 +126,7 @@ describe('claimSubmissionSchema — work location branches', () => {
       vehicleType: 'Two Wheeler',
       fromCityId: 'mock-city-uuid',
       toCityId: 'mock-city-uuid',
-      kmTravelled: 150,
+      kmTravelled: 200,
     })
     expect(parsed.success).toBe(true)
   })
@@ -204,7 +204,7 @@ describe('claimSubmissionSchema — KM limit validation (EDGE-005, EDGE-006)', (
   // KM limits are now validated server-side using max_km_round_trip from the
   // vehicle_types DB table. Schema accepts any positive number.
 
-  it('accepts 2W outstation claim above 150 km at schema level (KM limit validated server-side)', () => {
+  it('accepts 2W outstation claim above 200 km at schema level (KM limit validated server-side)', () => {
     const parsed = claimSubmissionSchema.safeParse({
       claimDate: PAST_DATE,
       workLocation: 'Field - Outstation',
@@ -213,12 +213,12 @@ describe('claimSubmissionSchema — KM limit validation (EDGE-005, EDGE-006)', (
       vehicleType: 'Two Wheeler',
       fromCityId: 'mock-city-uuid',
       toCityId: 'mock-city-uuid',
-      kmTravelled: 200,
+      kmTravelled: 250,
     })
     expect(parsed.success).toBe(true)
   })
 
-  it('accepts 2W at 151 km at schema level', () => {
+  it('accepts 2W at 201 km at schema level', () => {
     const parsed = claimSubmissionSchema.safeParse({
       claimDate: PAST_DATE,
       workLocation: 'Field - Outstation',
@@ -227,7 +227,7 @@ describe('claimSubmissionSchema — KM limit validation (EDGE-005, EDGE-006)', (
       vehicleType: 'Two Wheeler',
       fromCityId: 'mock-city-uuid',
       toCityId: 'mock-city-uuid',
-      kmTravelled: 151,
+      kmTravelled: 201,
     })
     expect(parsed.success).toBe(true)
   })

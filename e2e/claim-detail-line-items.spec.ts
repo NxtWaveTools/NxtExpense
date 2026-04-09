@@ -19,30 +19,39 @@ function toIsoDateDaysBack(daysBack: number): string {
 }
 
 function buildCandidateDaysBack(): number[] {
-  const randomOffset = Math.floor(Math.random() * 120)
+  const randomOffset = Math.floor(Math.random() * 997)
 
-  return Array.from({ length: 120 }, (_, i) => 1 + ((i + randomOffset) % 120))
+  return [
+    ...Array.from({ length: 31 }, (_, i) => i + randomOffset),
+    ...Array.from({ length: 30 }, (_, i) => 35 + i * 5 + randomOffset),
+    ...Array.from({ length: 18 }, (_, i) => 210 + i * 30 + randomOffset),
+    ...Array.from({ length: 25 }, (_, i) => 760 + i * 120 + randomOffset),
+  ]
 }
 
 async function hasDateCollisionMessage(page: Page): Promise<boolean> {
-  const duplicateDateError =
-    (await page
-      .getByText(
-        /already have a pending or approved claim for this date|already have .*claim for this date|claim already submitted for this date/i
-      )
-      .count()) > 0
+  try {
+    const duplicateDateError =
+      (await page
+        .getByText(
+          /already have a pending or approved claim for this date|already have .*claim for this date|claim already submitted for this date/i
+        )
+        .count()) > 0
 
-  const duplicateConstraintError =
-    (await page
-      .getByText(/duplicate key value violates unique constraint/i)
-      .count()) > 0
+    const duplicateConstraintError =
+      (await page
+        .getByText(/duplicate key value violates unique constraint/i)
+        .count()) > 0
 
-  const permanentlyClosedError =
-    (await page.getByText(/permanently closed/i).count()) > 0
+    const permanentlyClosedError =
+      (await page.getByText(/permanently closed/i).count()) > 0
 
-  return (
-    duplicateDateError || duplicateConstraintError || permanentlyClosedError
-  )
+    return (
+      duplicateDateError || duplicateConstraintError || permanentlyClosedError
+    )
+  } catch {
+    return false
+  }
 }
 
 async function findOutstationOption(
@@ -105,34 +114,39 @@ async function submitOutstationRentalClaimAndGetNumber(
   claims: ClaimsPage,
   outstationOption: RuntimeWorkLocationOption
 ): Promise<string> {
-  await claims.ensureNewClaimFormReady()
-  await claims.selectWorkLocationByValue(outstationOption.value)
-  await claims.intercityOwnVehicleNoButton.click()
-  await claims.intracityOwnVehicleYesButton.click()
-  await claims.intracityVehicleModeRentalButton.click()
-
-  await selectStateAndCityWithData(claims)
-  await claims.vehicleTypeSelect.first().selectOption({ index: 0 })
-
   for (const daysBack of buildCandidateDaysBack()) {
     const claimDateIso = toIsoDateDaysBack(daysBack)
 
     await claims.ensureNewClaimFormReady()
+    await claims.selectWorkLocationByValue(outstationOption.value)
+    await claims.intercityOwnVehicleNoButton.click()
+    await claims.intracityOwnVehicleYesButton.click()
+    await claims.intracityVehicleModeRentalButton.click()
+    await selectStateAndCityWithData(claims)
+    await claims.vehicleTypeSelect.first().selectOption({ index: 0 })
     await claims.fillClaimDate(claimDateIso)
     await expect(claims.submitButton).toBeEnabled({ timeout: 20_000 })
     await claims.submitButton.click()
+
+    if (await hasDateCollisionMessage(page)) {
+      continue
+    }
 
     let navigatedToClaims = false
 
     try {
       await page.waitForURL((url: URL) => url.pathname === '/claims', {
-        timeout: 7_000,
+        timeout: 5_000,
       })
       navigatedToClaims = true
     } catch {
+      if (await hasDateCollisionMessage(page)) {
+        continue
+      }
+
       let submitButtonEnabled = false
 
-      for (let retry = 0; retry < 20; retry += 1) {
+      for (let retry = 0; retry < 12; retry += 1) {
         try {
           submitButtonEnabled = await claims.submitButton.isEnabled()
           if (submitButtonEnabled) {
@@ -142,45 +156,38 @@ async function submitOutstationRentalClaimAndGetNumber(
           submitButtonEnabled = false
         }
 
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(250)
       }
 
       if (!submitButtonEnabled) {
         await claims.gotoNewClaim()
         await claims.ensureNewClaimFormReady()
-      }
-
-      const submittedClaimNumber =
-        (await claims.getSubmittedClaimNumberFromSuccessToast(5_000)) ??
-        (new URL(page.url()).pathname === '/claims'
-          ? await claims.getClaimNumberForDate(claimDateIso)
-          : null)
-
-      if (submittedClaimNumber) {
-        expect(submittedClaimNumber).toMatch(/^CLAIM-/i)
-        return submittedClaimNumber
-      }
-
-      if (await hasDateCollisionMessage(page)) {
         continue
       }
+    }
 
-      throw new Error(
-        'Outstation rental claim submission failed with an unexpected error.'
-      )
+    const currentPath = new URL(page.url()).pathname
+
+    if (await hasDateCollisionMessage(page)) {
+      continue
     }
 
     const claimNumber =
       (await claims.getSubmittedClaimNumberFromSuccessToast(
-        navigatedToClaims ? 1_500 : 5_000
+        navigatedToClaims ? 1_500 : 2_500
       )) ??
-      (new URL(page.url()).pathname === '/claims'
+      (currentPath === '/claims'
         ? await claims.getClaimNumberForDate(claimDateIso)
         : null)
 
     if (claimNumber) {
       expect(claimNumber).toMatch(/^CLAIM-/i)
       return claimNumber
+    }
+
+    if (currentPath !== '/claims/new') {
+      await claims.gotoNewClaim()
+      await claims.ensureNewClaimFormReady()
     }
   }
 

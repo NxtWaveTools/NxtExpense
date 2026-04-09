@@ -6,8 +6,8 @@ import {
 } from '@/features/claims/components/claim-summary-preview'
 
 const RATE_SNAPSHOT: ClaimRateSnapshot = {
-  foodBaseDaily: 120,
-  foodOutstationDaily: 350,
+  foodBaseDaily: 170,
+  foodOutstationDaily: 400,
   fuelBaseDailyByVehicle: {
     'veh-2w': 180,
   },
@@ -27,9 +27,10 @@ const RATE_SNAPSHOT: ClaimRateSnapshot = {
     'veh-2w': 180,
   },
   maxKmRoundTripByVehicle: {
-    'veh-2w': 150,
+    'veh-2w': 200,
   },
   foodWithPrincipalsMax: 500,
+  intercityAutoIntracityAllowanceEnabled: false,
 }
 
 describe('getClaimSummaryPreview', () => {
@@ -51,10 +52,10 @@ describe('getClaimSummaryPreview', () => {
     })
 
     expect(result.items).toEqual([
-      { label: 'Food allowance', amount: 120 },
+      { label: 'Food allowance', amount: 170 },
       { label: 'Two Wheeler fuel allowance', amount: 180 },
     ])
-    expect(result.total).toBe(300)
+    expect(result.total).toBe(350)
   })
 
   it('shows fuel-only for base location half day', () => {
@@ -100,8 +101,8 @@ describe('getClaimSummaryPreview', () => {
       claimRateSnapshot: RATE_SNAPSHOT,
     })
 
-    expect(result.items).toEqual([{ label: 'Food allowance', amount: 350 }])
-    expect(result.total).toBe(350)
+    expect(result.items).toEqual([{ label: 'Food allowance', amount: 400 }])
+    expect(result.total).toBe(400)
   })
 
   it('includes intra-city allowance when intra-city own vehicle is selected', () => {
@@ -122,10 +123,10 @@ describe('getClaimSummaryPreview', () => {
     })
 
     expect(result.items).toEqual([
-      { label: 'Food allowance', amount: 350 },
+      { label: 'Food allowance', amount: 400 },
       { label: 'Two Wheeler fixed intra-city fuel allowance', amount: 180 },
     ])
-    expect(result.total).toBe(530)
+    expect(result.total).toBe(580)
   })
 
   it('includes fixed fuel allowance when intra-city rented vehicle is selected', () => {
@@ -146,24 +147,24 @@ describe('getClaimSummaryPreview', () => {
     })
 
     expect(result.items).toEqual([
-      { label: 'Food allowance', amount: 350 },
+      { label: 'Food allowance', amount: 400 },
       {
         label:
           'Two Wheeler fixed intra-city fuel allowance (rented vehicle travel)',
         amount: 180,
       },
     ])
-    expect(result.total).toBe(530)
+    expect(result.total).toBe(580)
   })
 
-  it('includes inter-city KM and intra-city allowance when inter-city own vehicle is selected', () => {
+  it('includes inter-city KM only when inter-city own vehicle is selected', () => {
     const result = getClaimSummaryPreview({
       workLocation: 'wl-outstation',
       requiresVehicleSelection: false,
       requiresOutstationDetails: true,
       baseLocationDayTypeCode: undefined,
       hasIntercityTravel: true,
-      hasIntracityTravel: false,
+      hasIntracityTravel: true,
       intercityOwnVehicleUsed: true,
       intracityOwnVehicleUsed: false,
       vehicleType: 'veh-2w',
@@ -174,11 +175,10 @@ describe('getClaimSummaryPreview', () => {
     })
 
     expect(result.items).toEqual([
-      { label: 'Food allowance', amount: 350 },
+      { label: 'Food allowance', amount: 400 },
       { label: 'Intercity travel (100.00 KM @ 5.00/KM)', amount: 500 },
-      { label: 'Two Wheeler fixed intra-city fuel allowance', amount: 180 },
     ])
-    expect(result.total).toBe(1030)
+    expect(result.total).toBe(900)
   })
 
   it('shows food allowance only when outstation own vehicle is not used', () => {
@@ -198,7 +198,7 @@ describe('getClaimSummaryPreview', () => {
       claimRateSnapshot: RATE_SNAPSHOT,
     })
 
-    expect(result.items).toEqual([{ label: 'Food allowance', amount: 350 }])
-    expect(result.total).toBe(350)
+    expect(result.items).toEqual([{ label: 'Food allowance', amount: 400 }])
+    expect(result.total).toBe(400)
   })
 })

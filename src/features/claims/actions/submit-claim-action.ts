@@ -232,6 +232,7 @@ export async function submitClaimAction(
     }
 
     const input = parsed.data
+    const rateLookupDateIso = new Date().toISOString().slice(0, 10)
 
     const existingClaim = await getClaimForDate(
       supabase,
@@ -475,6 +476,7 @@ export async function submitClaimAction(
       const vt = await getVehicleTypeById(supabase, vehicleTypeId)
       draft = await calculateBaseLocationItems(supabase, {
         workLocationId,
+        claimDateIso: rateLookupDateIso,
         vehicleType: vt,
         includeFoodAllowance:
           resolvedBaseLocationDayType?.include_food_allowance ?? true,
@@ -501,6 +503,7 @@ export async function submitClaimAction(
 
       draft = await calculateOutstationTravelItems(supabase, {
         workLocationId,
+        claimDateIso: rateLookupDateIso,
         designationId: employee.designation_id ?? '',
         vehicleType: vt,
         hasIntercityTravel,
@@ -525,7 +528,8 @@ export async function submitClaimAction(
       const fwpRate = await getFoodWithPrincipalsLimit(
         supabase,
         workLocationId,
-        employee.designation_id
+        employee.designation_id,
+        rateLookupDateIso
       )
       if (fwpRate === 0) {
         return {
