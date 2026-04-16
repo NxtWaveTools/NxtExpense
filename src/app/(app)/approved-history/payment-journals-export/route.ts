@@ -1,11 +1,9 @@
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
 import { getFinanceHistoryPaginated } from '@/features/finance/queries'
-import { getMappedClaimItemsByClaimId } from '@/features/finance/queries/mapped-claim-items'
 import { normalizeFinanceFilters } from '@/features/finance/utils/filters'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
-  getActiveExpenseTypeAccountMappings,
   getFinanceExportProfileByCode,
   type FinanceExportProfile,
 } from '@/lib/services/finance-export-config-service'
@@ -106,25 +104,12 @@ async function handleExportRequest(request: Request) {
       return new Response('Finance access is required.', { status: 403 })
     }
 
-    const [profile, mappings] = await Promise.all([
-      getFinanceExportProfileByCode(
-        supabase,
-        PAYMENT_JOURNALS_EXPORT_PROFILE_CODE
-      ),
-      getActiveExpenseTypeAccountMappings(supabase),
-    ])
+    const profile = await getFinanceExportProfileByCode(
+      supabase,
+      PAYMENT_JOURNALS_EXPORT_PROFILE_CODE
+    )
 
     ensureProfileExists(profile)
-
-    if (mappings.length === 0) {
-      return new Response('Expense type account mappings are not configured.', {
-        status: 400,
-      })
-    }
-
-    const mappedExpenseItemTypes = mappings.map(
-      (mapping) => mapping.expense_item_type
-    )
 
     const defaults = resolvePaymentJournalsDefaults(profile)
     const seenClaimIds = new Set<string>()
@@ -146,21 +131,8 @@ async function handleExportRequest(request: Request) {
             { maxFilteredClaimIds: null }
           )
 
-          const claimIds = [
-            ...new Set(
-              historyPage.data.map((historyRow) => historyRow.claim.id)
-            ),
-          ]
-
-          const claimItemsByClaimId = await getMappedClaimItemsByClaimId(
-            supabase,
-            claimIds,
-            mappedExpenseItemTypes
-          )
-
           accumulatePaymentJournalsEmployeeTotals({
             historyRows: historyPage.data,
-            claimItemsByClaimId,
             seenClaimIds,
             totalsByEmployeeId,
           })

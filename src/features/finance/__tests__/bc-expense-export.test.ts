@@ -24,7 +24,8 @@ const BC_PROFILE: FinanceExportProfile = {
 function buildHistoryRow(
   claimId: string,
   claimNumber: string,
-  regionCode: string | null = 'COMMON'
+  regionCode: string | null = 'COMMON',
+  totalAmount = 0
 ): FinanceHistoryItem {
   return {
     claim: {
@@ -39,7 +40,7 @@ function buildHistoryRow(
       from_city_name: null,
       to_city_name: null,
       km_travelled: null,
-      total_amount: 0,
+      total_amount: totalAmount,
       statusName: 'Payment Issued',
       statusDisplayColor: 'green',
       status_id: 'status-issued',
@@ -100,7 +101,7 @@ describe('bc expense export util', () => {
   })
 
   it('builds rows with negative amounts and skips unmapped item types', () => {
-    const historyRows = [buildHistoryRow('claim-1', 'CLAIM-1')]
+    const historyRows = [buildHistoryRow('claim-1', 'CLAIM-1', 'COMMON', 270.5)]
     const claimItemsByClaimId = new Map([
       [
         'claim-1',
@@ -133,7 +134,9 @@ describe('bc expense export util', () => {
   })
 
   it('maps intercity travel to fuel GL account in BC export rows', () => {
-    const historyRows = [buildHistoryRow('claim-km', 'CLAIM-KM-1')]
+    const historyRows = [
+      buildHistoryRow('claim-km', 'CLAIM-KM-1', 'COMMON', 480),
+    ]
     const claimItemsByClaimId = new Map([
       [
         'claim-km',
@@ -182,7 +185,7 @@ describe('bc expense export util', () => {
 
   it('falls back to blank region when claim region is missing', () => {
     const rows = buildBcExpenseRows({
-      historyRows: [buildHistoryRow('claim-4', 'CLAIM-4', null)],
+      historyRows: [buildHistoryRow('claim-4', 'CLAIM-4', null, 10)],
       claimItemsByClaimId: new Map([
         ['claim-4', [{ claim_id: 'claim-4', item_type: 'food', amount: 10 }]],
       ]),
@@ -193,5 +196,26 @@ describe('bc expense export util', () => {
 
     expect(rows).toHaveLength(1)
     expect(rows[0][13]).toBe('')
+  })
+
+  it('adds a reconciliation row when mapped items do not cover claim total', () => {
+    const rows = buildBcExpenseRows({
+      historyRows: [buildHistoryRow('claim-5', 'CLAIM-5', 'COMMON', 420)],
+      claimItemsByClaimId: new Map([
+        ['claim-5', [{ claim_id: 'claim-5', item_type: 'food', amount: 120 }]],
+      ]),
+      balAccountNoByItemType: new Map([
+        ['food', '503063'],
+        ['fuel', '535002'],
+      ]),
+      postingDate: '15/04/2026',
+      exportProfile: BC_PROFILE,
+    })
+
+    expect(rows).toHaveLength(2)
+    expect(rows[0][5]).toBe('-120')
+    expect(rows[0][8]).toBe('503063')
+    expect(rows[1][5]).toBe('-300')
+    expect(rows[1][8]).toBe('535002')
   })
 })

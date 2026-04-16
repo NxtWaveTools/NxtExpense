@@ -115,7 +115,7 @@ describe('payment journals export util', () => {
     ])
   })
 
-  it('builds one row per employee and sums mapped claim-item totals', () => {
+  it('builds one row per employee and sums unique claim totals', () => {
     const defaults = resolvePaymentJournalsDefaults(PROFILE)
     const totalsByEmployeeId = new Map<string, number>()
     const seenClaimIds = new Set<string>()
@@ -127,11 +127,6 @@ describe('payment journals export util', () => {
         buildHistoryRow('claim-2', 'CLAIM-2', 2500.5, 'NW0004545'),
         buildHistoryRow('claim-3', 'CLAIM-3', 700, 'NW0004546'),
       ],
-      claimItemsByClaimId: new Map([
-        ['claim-1', [{ amount: 400 }, { amount: 600 }]],
-        ['claim-2', [{ amount: 2450.5 }]],
-        ['claim-3', [{ amount: 700 }]],
-      ]),
       seenClaimIds,
       totalsByEmployeeId,
     })
@@ -159,7 +154,7 @@ describe('payment journals export util', () => {
       '0',
       'Reimbursements',
       'IMPS',
-      '3450.50',
+      '3500.50',
       'Bank Account',
       'IDFC 2012',
       'NIAT',
@@ -178,7 +173,6 @@ describe('payment journals export util', () => {
 
     accumulatePaymentJournalsEmployeeTotals({
       historyRows: [buildHistoryRow('claim-1', 'CLAIM-1', -321.4, 'NW0004545')],
-      claimItemsByClaimId: new Map([['claim-1', [{ amount: -321.4 }]]]),
       seenClaimIds: new Set<string>(),
       totalsByEmployeeId,
     })
@@ -203,16 +197,15 @@ describe('payment journals export util', () => {
     ).toThrow('Payment Journals export profile is missing payment method code.')
   })
 
-  it('skips claims that do not have mapped item rows', () => {
+  it('includes claims even when mapped claim-item rows are unavailable', () => {
     const totalsByEmployeeId = new Map<string, number>()
 
     accumulatePaymentJournalsEmployeeTotals({
       historyRows: [buildHistoryRow('claim-4', 'CLAIM-4', 999, 'NW0004547')],
-      claimItemsByClaimId: new Map(),
       seenClaimIds: new Set<string>(),
       totalsByEmployeeId,
     })
 
-    expect(totalsByEmployeeId.size).toBe(0)
+    expect(totalsByEmployeeId.get('NW0004547')).toBe(999)
   })
 })

@@ -1,5 +1,6 @@
 import type { FinanceExportProfile } from '@/lib/services/finance-export-config-service'
 import type { FinanceHistoryItem } from '@/features/finance/types'
+import { CLAIM_ITEM_TYPES } from '@/lib/constants/claim-expense'
 import { getCanonicalExportAccountItemType } from '@/features/finance/utils/export-item-type-mapping'
 
 export type ClaimExpenseItemRow = {
@@ -48,6 +49,44 @@ type BuildRowsInput = {
   exportProfile: FinanceExportProfile
 }
 
+function toNormalizedAmount(value: number | string | null | undefined): number {
+  const numericValue =
+    typeof value === 'number' ? value : value ? Number(value) : 0
+
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function toRoundedCurrency(amount: number): number {
+  return Math.round(amount * 100) / 100
+}
+
+function resolveFallbackBalAccountNo(
+  exportProfile: FinanceExportProfile,
+  balAccountNoByItemType: Map<string, string>
+): string | null {
+  const profileBalAccountNo = exportProfile.bal_account_no?.trim()
+
+  if (profileBalAccountNo) {
+    return profileBalAccountNo
+  }
+
+  const fuelBalAccountNo = balAccountNoByItemType.get(CLAIM_ITEM_TYPES.FUEL)
+
+  if (fuelBalAccountNo) {
+    return fuelBalAccountNo
+  }
+
+  const foodBalAccountNo = balAccountNoByItemType.get(CLAIM_ITEM_TYPES.FOOD)
+
+  if (foodBalAccountNo) {
+    return foodBalAccountNo
+  }
+
+  const firstMapping = balAccountNoByItemType.values().next()
+
+  return firstMapping.done ? null : firstMapping.value
+}
+
 export function buildBcExpenseRows({
   historyRows,
   claimItemsByClaimId,
@@ -56,9 +95,14 @@ export function buildBcExpenseRows({
   exportProfile,
 }: BuildRowsInput): string[][] {
   const rows: string[][] = []
+  const fallbackBalAccountNo = resolveFallbackBalAccountNo(
+    exportProfile,
+    balAccountNoByItemType
+  )
 
   for (const historyRow of historyRows) {
     const claimItems = claimItemsByClaimId.get(historyRow.claim.id) ?? []
+    let mappedTotal = 0
 
     for (const claimItem of claimItems) {
       const canonicalItemType = getCanonicalExportAccountItemType(
@@ -71,6 +115,8 @@ export function buildBcExpenseRows({
       if (!balAccountNo) {
         continue
       }
+
+      mappedTotal += claimItem.amount
 
       rows.push([
         postingDate,
@@ -89,6 +135,36 @@ export function buildBcExpenseRows({
         historyRow.claim.expense_region_code ?? '',
       ])
     }
+
+    const claimTotal = toNormalizedAmount(historyRow.claim.total_amount)
+    const reconciliationAmount = toRoundedCurrency(claimTotal - mappedTotal)
+
+    if (Math.abs(reconciliationAmount) < 0.01) {
+      continue
+    }
+
+    if (!fallbackBalAccountNo) {
+      throw new Error(
+        `BC export is missing an active Bal. Account mapping for claim ${historyRow.claim.claim_number}.`
+      )
+    }
+
+    rows.push([
+      postingDate,
+      exportProfile.default_document_no,
+      exportProfile.account_type,
+      historyRow.owner.employee_id,
+      exportProfile.employee_transaction_type,
+      formatNegativeAmount(reconciliationAmount),
+      historyRow.claim.claim_number,
+      exportProfile.bal_account_type,
+      fallbackBalAccountNo,
+      exportProfile.program_code,
+      exportProfile.sub_product_code,
+      exportProfile.responsible_dep_code,
+      exportProfile.beneficiary_dep_code,
+      historyRow.claim.expense_region_code ?? '',
+    ])
   }
 
   return rows

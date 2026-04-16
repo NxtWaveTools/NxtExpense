@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   getFinanceHistoryPaginated: vi.fn(),
   normalizeFinanceFilters: vi.fn(),
   getFinanceExportProfileByCode: vi.fn(),
-  getActiveExpenseTypeAccountMappings: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -32,8 +31,6 @@ vi.mock('@/features/finance/utils/filters', () => ({
 
 vi.mock('@/lib/services/finance-export-config-service', () => ({
   getFinanceExportProfileByCode: mocks.getFinanceExportProfileByCode,
-  getActiveExpenseTypeAccountMappings:
-    mocks.getActiveExpenseTypeAccountMappings,
 }))
 
 import {
@@ -119,49 +116,13 @@ function buildHistoryRow(
   }
 }
 
-function buildSupabaseWithClaimItems(
-  claimItems: Array<{ claim_id: string; item_type: string; amount: number }>
-) {
+function buildSupabaseAuthClient() {
   return {
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { email: 'finance@nxtwave.co.in' } },
       }),
     },
-    from: vi.fn((tableName: string) => {
-      if (tableName === 'expense_claim_items') {
-        let requestedClaimIds: string[] = []
-
-        const query = {
-          select: vi.fn().mockReturnThis(),
-          in: vi.fn().mockImplementation((column: string, values: string[]) => {
-            if (column === 'claim_id') {
-              requestedClaimIds = values
-              return query
-            }
-
-            if (column === 'item_type') {
-              const requestedItemTypes = values
-
-              return Promise.resolve({
-                data: claimItems.filter(
-                  (item) =>
-                    requestedClaimIds.includes(item.claim_id) &&
-                    requestedItemTypes.includes(item.item_type)
-                ),
-                error: null,
-              })
-            }
-
-            return query
-          }),
-        }
-
-        return query
-      }
-
-      throw new Error(`Unexpected table: ${tableName}`)
-    }),
   }
 }
 
@@ -186,14 +147,10 @@ describe('approved-history Payment Journals export route', () => {
     mocks.getEmployeeByEmail.mockResolvedValue({ id: 'finance-1' })
     mocks.isFinanceTeamMember.mockResolvedValue(true)
     mocks.getFinanceExportProfileByCode.mockResolvedValue(PAYMENT_PROFILE)
-    mocks.getActiveExpenseTypeAccountMappings.mockResolvedValue([
-      { expense_item_type: 'food', bal_account_no: '503063', is_active: true },
-      { expense_item_type: 'fuel', bal_account_no: '535002', is_active: true },
-    ])
 
-    mocks.createSupabaseServerClient.mockResolvedValue({
-      ...buildSupabaseWithClaimItems([]),
-    })
+    mocks.createSupabaseServerClient.mockResolvedValue(
+      buildSupabaseAuthClient()
+    )
   })
 
   it('streams one row per employee with strict defaults and summed amount', async () => {
@@ -218,11 +175,7 @@ describe('approved-history Payment Journals export route', () => {
       })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([
-        { claim_id: 'claim-1', item_type: 'food', amount: 1000 },
-        { claim_id: 'claim-2', item_type: 'food', amount: 2450.5 },
-        { claim_id: 'claim-3', item_type: 'fuel', amount: 500 },
-      ])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -273,13 +226,7 @@ describe('approved-history Payment Journals export route', () => {
     })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([
-        {
-          claim_id: 'claim-km',
-          item_type: 'intercity_travel',
-          amount: 480,
-        },
-      ])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -319,7 +266,7 @@ describe('approved-history Payment Journals export route', () => {
     })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -364,7 +311,7 @@ describe('approved-history Payment Journals export route', () => {
     })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -409,7 +356,7 @@ describe('approved-history Payment Journals export route', () => {
     })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -440,7 +387,7 @@ describe('approved-history Payment Journals export route', () => {
     )
   })
 
-  it('does not output rows for claims without mapped item rows', async () => {
+  it('includes claim total rows even without mapped item rows', async () => {
     mocks.getFinanceHistoryPaginated.mockResolvedValue({
       data: [buildHistoryRow('claim-4', 'NW0004548', 900)],
       hasNextPage: false,
@@ -449,7 +396,7 @@ describe('approved-history Payment Journals export route', () => {
     })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -465,13 +412,16 @@ describe('approved-history Payment Journals export route', () => {
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
 
-    expect(csvLines).toHaveLength(1)
+    expect(csvLines).toHaveLength(2)
+    expect(csv).toContain(
+      '"","Payment","","","Employee","NW0004548","0","0","ADVANCE","Petty cash & Reimbursements","100% Payment after Service / Goods delivery","","0","Reimbursements","IMPS","900.00","Bank Account","IDFC 2012","NIAT","NIAT362","PRE-SALES","PRE-SALES"'
+    )
   })
 
   it('returns 400 when export profile is missing', async () => {
     mocks.getFinanceExportProfileByCode.mockResolvedValue(null)
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([])
+      buildSupabaseAuthClient()
     )
 
     const response = await GET(
@@ -513,7 +463,7 @@ describe('approved-history Payment Journals export route', () => {
     })
 
     mocks.createSupabaseServerClient.mockResolvedValue(
-      buildSupabaseWithClaimItems([])
+      buildSupabaseAuthClient()
     )
 
     const response = await POST(

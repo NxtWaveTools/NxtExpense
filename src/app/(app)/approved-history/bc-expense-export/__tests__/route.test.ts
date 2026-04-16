@@ -146,6 +146,7 @@ describe('approved-history BC expense export route', () => {
             id: 'claim-1',
             claim_number: 'CLAIM-31-03-26-0103',
             expense_region_code: 'COMMON',
+            total_amount: 420,
           },
           owner: {
             employee_id: 'NW0001123',
@@ -203,6 +204,7 @@ describe('approved-history BC expense export route', () => {
             id: 'claim-km',
             claim_number: 'CLAIM-KM-001',
             expense_region_code: 'COMMON',
+            total_amount: 480,
           },
           owner: {
             employee_id: 'NW0000282',
@@ -223,6 +225,47 @@ describe('approved-history BC expense export route', () => {
     const csv = await response.text()
     expect(csv).toContain(
       '"15/04/2026","","Employee","NW0000282","ADVANCE","-480","CLAIM-KM-001","G/L Account","535002","NIAT","NIAT362","PRE-SALES","PRE-SALES","COMMON"'
+    )
+  })
+
+  it('adds reconciliation row so exported BC totals match claim totals', async () => {
+    mocks.createSupabaseServerClient.mockResolvedValue(
+      buildSupabaseWithClaimItems([
+        { claim_id: 'claim-gap', item_type: 'food', amount: 200 },
+      ])
+    )
+
+    mocks.getFinanceHistoryPaginated.mockResolvedValue({
+      data: [
+        {
+          claim: {
+            id: 'claim-gap',
+            claim_number: 'CLAIM-GAP-001',
+            expense_region_code: 'COMMON',
+            total_amount: 600,
+          },
+          owner: {
+            employee_id: 'NW0007777',
+          },
+        },
+      ],
+      hasNextPage: false,
+      nextCursor: null,
+      limit: 500,
+    })
+
+    const response = await GET(
+      new Request('http://localhost:3000/approved-history/bc-expense-export')
+    )
+
+    expect(response.status).toBe(200)
+
+    const csv = await response.text()
+    expect(csv).toContain(
+      '"15/04/2026","","Employee","NW0007777","ADVANCE","-200","CLAIM-GAP-001","G/L Account","503063","NIAT","NIAT362","PRE-SALES","PRE-SALES","COMMON"'
+    )
+    expect(csv).toContain(
+      '"15/04/2026","","Employee","NW0007777","ADVANCE","-400","CLAIM-GAP-001","G/L Account","535002","NIAT","NIAT362","PRE-SALES","PRE-SALES","COMMON"'
     )
   })
 
