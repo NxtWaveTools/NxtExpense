@@ -4,7 +4,7 @@ import {
   canApproveAtLevel,
   getApproverCurrentLevel,
 } from '@/features/approvals/permissions'
-import { getNextApprovalLevel } from '@/lib/services/approval-service'
+import { getNextApprovalLevel } from '@/features/approvals/domain/approval-routing'
 import type { DesignationApprovalFlow } from '@/lib/services/config-service'
 import type { EmployeeRow } from '@/lib/services/employee-service'
 import type { Claim } from '@/features/claims/types'

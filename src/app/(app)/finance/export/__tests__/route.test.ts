@@ -22,7 +22,7 @@ vi.mock('@/features/finance/permissions', () => ({
   isFinanceTeamMember: mocks.isFinanceTeamMember,
 }))
 
-vi.mock('@/features/finance/queries', () => ({
+vi.mock('@/features/finance/data/queries', () => ({
   getFinanceHistoryPaginated: mocks.getFinanceHistoryPaginated,
 }))
 

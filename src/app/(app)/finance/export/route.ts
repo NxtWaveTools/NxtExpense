@@ -1,6 +1,6 @@
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
-import { getFinanceHistoryPaginated } from '@/features/finance/queries'
+import { getFinanceHistoryPaginated } from '@/features/finance/data/queries'
 import {
   buildFinanceHistoryCsv,
   normalizeFinanceFilters,

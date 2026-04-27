@@ -7,12 +7,12 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
   getClaimAvailableActions,
   getClaimById,
-} from '@/features/claims/queries'
+} from '@/features/claims/data/queries'
 import { getEmployeeById } from '@/lib/services/employee-service'
-import { getClaimApprovalHistory } from '@/features/approvals/queries'
-import { ApprovalDetail } from '@/features/approvals/components/approval-detail'
-import { ApprovalActions } from '@/features/approvals/components/approval-actions'
-import { ApprovalHistoryTimeline } from '@/features/approvals/components/approval-history-timeline'
+import { getClaimApprovalHistory } from '@/features/approvals/data/queries'
+import { ApprovalDetail } from '@/features/approvals/ui/components/approval-detail'
+import { ApprovalActions } from '@/features/approvals/ui/components/approval-actions'
+import { ApprovalHistoryTimeline } from '@/features/approvals/ui/components/approval-history-timeline'
 
 export const dynamic = 'force-dynamic'
 

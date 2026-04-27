@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { requireCurrentUser } from '@/features/auth/queries'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-import { ClaimSubmissionForm } from '@/features/claims/components/claim-submission-form'
+import { ClaimSubmissionForm } from '@/features/claims/ui/components/claim-submission-form'
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import {

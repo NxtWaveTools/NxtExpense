@@ -2,22 +2,22 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
 import { requireCurrentUser } from '@/features/auth/queries'
-import { ClaimDetail } from '@/features/claims/components/claim-detail'
-import { ClaimHistoryTimeline } from '@/features/claims/components/claim-history-timeline'
-import { ClaimStatusBadge } from '@/features/claims/components/claim-status-badge'
+import { ClaimDetail } from '@/features/claims/ui/components/claim-detail'
+import { ClaimHistoryTimeline } from '@/features/claims/ui/components/claim-history-timeline'
+import { ClaimStatusBadge } from '@/features/claims/ui/components/claim-status-badge'
 import {
   getClaimAvailableActions,
   getClaimById,
   getClaimHistory,
-} from '@/features/claims/queries'
+} from '@/features/claims/data/queries'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import {
   getEmployeeByEmail,
   getEmployeeById,
 } from '@/lib/services/employee-service'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { ApprovalActions } from '@/features/approvals/components/approval-actions'
-import { FinanceActions } from '@/features/finance/components/finance-actions'
+import { ApprovalActions } from '@/features/approvals/ui/components/approval-actions'
+import { FinanceActions } from '@/features/finance/ui/components/finance-actions'
 import { withSubmittedHistoryFallback } from '@/features/claims/utils/history'
 
 type ClaimDetailPageProps = {

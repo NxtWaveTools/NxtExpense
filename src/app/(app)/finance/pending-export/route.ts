@@ -1,6 +1,6 @@
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
-import { getFinanceQueuePaginated } from '@/features/finance/queries'
+import { getFinanceQueuePaginated } from '@/features/finance/data/queries'
 import type { FinanceDateFilterField } from '@/features/finance/types'
 import {
   buildFinancePendingClaimsCsv,

@@ -6,13 +6,16 @@ const mocks = vi.hoisted(() => ({
   getFilteredClaimIdsForFinance: vi.fn(),
 }))
 
-vi.mock('@/features/finance/queries/filters', () => ({
-  getFilteredClaimIdsForFinance: mocks.getFilteredClaimIdsForFinance,
-  isFinanceActionDateFilterField: (field: string) =>
-    field === 'finance_approved_date' || field === 'payment_released_date',
-}))
+vi.mock(
+  '@/features/finance/data/repositories/finance-filters.repository',
+  () => ({
+    getFilteredClaimIdsForFinance: mocks.getFilteredClaimIdsForFinance,
+    isFinanceActionDateFilterField: (field: string) =>
+      field === 'finance_approved_date' || field === 'payment_released_date',
+  })
+)
 
-import { getFinanceHistoryAnalytics } from '@/features/finance/queries/history-analytics'
+import { getFinanceHistoryAnalytics } from '@/features/finance/data/queries'
 
 type MetricsRow = {
   total_count: number

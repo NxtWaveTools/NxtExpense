@@ -9,7 +9,7 @@ import {
   DATA_TABLE_PAGINATION_SLOT_CLASS,
   DATA_TABLE_SECTION_CLASS,
 } from '@/components/ui/data-table-tokens'
-import { submitBulkApprovalAction } from '@/features/approvals/actions'
+import { submitBulkApprovalAction } from '@/features/approvals/server/actions'
 import { ApprovalListTable } from '@/features/approvals/components/approval-list-table'
 import { ApprovalListToolbar } from '@/features/approvals/components/approval-list-toolbar'
 import { CursorPaginationControls } from '@/components/ui/cursor-pagination-controls'

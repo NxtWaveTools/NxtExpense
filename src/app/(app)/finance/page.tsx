@@ -14,18 +14,20 @@ import {
   getCursorTotalPages,
   normalizeCursorPageSize,
 } from '@/lib/utils/pagination'
-import { getFinanceQueueAction } from '@/features/finance/actions'
-import { getFinanceFilterOptions } from '@/features/finance/queries'
-import { getFinanceQueueAnalytics } from '@/features/finance/queries/analytics'
-import { getFinanceQueueTotalCount } from '@/features/finance/queries'
+import { getFinanceQueueAction } from '@/features/finance/server/actions'
+import {
+  getFinanceFilterOptions,
+  getFinanceQueueAnalytics,
+  getFinanceQueueTotalCount,
+} from '@/features/finance/data/queries'
 import type { FinanceDateFilterField } from '@/features/finance/types'
 import {
   addFinanceFiltersToParams,
   normalizeFinanceFilters,
 } from '@/features/finance/utils/filters'
 import { ClaimAnalyticsCards } from '@/components/ui/claim-analytics-cards'
-import { FinanceFiltersBar } from '@/features/finance/components/finance-filters-bar'
-import { FinanceQueue } from '@/features/finance/components/finance-queue'
+import { FinanceFiltersBar } from '@/features/finance/ui/components/finance-filters-bar'
+import { FinanceQueue } from '@/features/finance/ui/components/finance-queue'
 import {
   buildPathWithSearchParams,
   createNonEmptySearchParams,

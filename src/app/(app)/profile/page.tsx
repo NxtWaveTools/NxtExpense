@@ -1,14 +1,14 @@
 import { UserCircle, Building2, ShieldCheck, TrendingUp } from 'lucide-react'
+import { redirect } from 'next/navigation'
 
 import { requireCurrentUser } from '@/features/auth/queries'
+import { getProfileClaimStats } from '@/features/claims/data/queries'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
   getEmployeeByEmail,
   getEmployeeNameMapByIds,
 } from '@/lib/services/employee-service'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
-import { getAllClaimStatuses } from '@/lib/services/config-service'
-import { redirect } from 'next/navigation'
 import { formatDate } from '@/lib/utils/date'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 
@@ -20,69 +20,6 @@ type ClaimStats = {
   financeApproved: number
   rejected: number
   paymentReleased: number
-}
-
-type EmployeeClaimMetricsRow = {
-  total_count: number | string | null
-  pending_count: number | string | null
-  approved_count: number | string | null
-  rejected_count: number | string | null
-}
-
-async function getClaimStats(
-  supabase: ReturnType<typeof createSupabaseServerClient> extends Promise<
-    infer T
-  >
-    ? T
-    : never,
-  employeeId: string
-): Promise<ClaimStats> {
-  const { data, error } = await supabase.rpc('get_employee_claim_metrics', {
-    p_employee_id: employeeId,
-  })
-
-  if (error) {
-    return {
-      total: 0,
-      pending: 0,
-      financeApproved: 0,
-      rejected: 0,
-      paymentReleased: 0,
-    }
-  }
-
-  const metrics = (
-    Array.isArray(data) ? data[0] : data
-  ) as EmployeeClaimMetricsRow | null
-
-  const total = Number(metrics?.total_count ?? 0)
-  const pending = Number(metrics?.pending_count ?? 0)
-  const rejected = Number(metrics?.rejected_count ?? 0)
-  const paymentReleased = Number(metrics?.approved_count ?? 0)
-
-  const statusCatalog = await getAllClaimStatuses(supabase)
-  const financeApprovedStatusIds = statusCatalog
-    .filter((status) => status.status_code === 'APPROVED')
-    .map((status) => status.id)
-
-  let financeApproved = 0
-  if (financeApprovedStatusIds.length > 0) {
-    const { count: financeApprovedCount } = await supabase
-      .from('expense_claims')
-      .select('id', { count: 'exact', head: true })
-      .eq('employee_id', employeeId)
-      .in('status_id', financeApprovedStatusIds)
-
-    financeApproved = financeApprovedCount ?? 0
-  }
-
-  return {
-    total,
-    pending,
-    financeApproved,
-    rejected,
-    paymentReleased,
-  }
 }
 
 export default async function ProfilePage() {
@@ -102,7 +39,7 @@ export default async function ProfilePage() {
 
   const [stats, approverNameMap] = await Promise.all([
     canViewClaimSummary
-      ? getClaimStats(supabase, employee.id)
+      ? getProfileClaimStats(supabase, employee.id)
       : Promise.resolve<ClaimStats | null>(null),
     getEmployeeNameMapByIds(supabase, approverIds),
   ])

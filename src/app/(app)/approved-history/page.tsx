@@ -13,19 +13,19 @@ import {
   getCursorTotalPages,
   normalizeCursorPageSize,
 } from '@/lib/utils/pagination'
-import { getFinanceHistoryAction } from '@/features/finance/actions'
+import { getFinanceHistoryAction } from '@/features/finance/server/actions'
 import {
   getFinanceFilterOptions,
   getFinanceHistoryTotalCount,
-} from '@/features/finance/queries'
-import { getFinanceHistoryAnalytics } from '@/features/finance/queries/history-analytics'
+} from '@/features/finance/data/queries'
+import { getFinanceHistoryAnalytics } from '@/features/finance/data/queries'
 import {
   addFinanceFiltersToParams,
   normalizeFinanceFilters,
 } from '@/features/finance/utils/filters'
 import { ClaimAnalyticsCards } from '@/components/ui/claim-analytics-cards'
-import { FinanceFiltersBar } from '@/features/finance/components/finance-filters-bar'
-import { FinanceHistoryList } from '@/features/finance/components/finance-history-list'
+import { FinanceFiltersBar } from '@/features/finance/ui/components/finance-filters-bar'
+import { FinanceHistoryList } from '@/features/finance/ui/components/finance-history-list'
 import {
   buildPathWithSearchParams,
   createNonEmptySearchParams,

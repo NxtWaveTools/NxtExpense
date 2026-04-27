@@ -31,12 +31,12 @@ vi.mock('@/features/finance/permissions', () => ({
   isFinanceTeamMember: mocks.isFinanceTeamMember,
 }))
 
-vi.mock('@/features/finance/queries', () => ({
+vi.mock('@/features/finance/data/queries', () => ({
   getFinanceQueuePaginated: mocks.getFinanceQueuePaginated,
   getFinanceHistoryPaginated: mocks.getFinanceHistoryPaginated,
 }))
 
-vi.mock('@/features/claims/queries', () => ({
+vi.mock('@/features/claims/data/queries', () => ({
   getClaimAvailableActions: mocks.getClaimAvailableActions,
   getClaimAvailableActionsByClaimIds: mocks.getClaimAvailableActionsByClaimIds,
 }))
@@ -61,7 +61,7 @@ import {
   getFinanceHistoryAction,
   getFinanceQueueAction,
   submitFinanceAction,
-} from '@/features/finance/actions'
+} from '@/features/finance/server/actions'
 
 describe('finance actions workflow integration', () => {
   let rpcMock: ReturnType<typeof vi.fn>

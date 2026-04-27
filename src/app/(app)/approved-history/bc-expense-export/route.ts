@@ -1,7 +1,9 @@
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
 import { isFinanceTeamMember } from '@/features/finance/permissions'
-import { getFinanceHistoryPaginated } from '@/features/finance/queries'
-import { getMappedClaimItemsByClaimId } from '@/features/finance/queries/mapped-claim-items'
+import {
+  getFinanceHistoryPaginated,
+  getMappedClaimItemsByClaimId,
+} from '@/features/finance/data/queries'
 import { normalizeFinanceFilters } from '@/features/finance/utils/filters'
 import {
   buildBcExpenseRows,

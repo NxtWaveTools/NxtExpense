@@ -27,7 +27,7 @@ vi.mock('@/lib/services/employee-service', async () => {
   }
 })
 
-vi.mock('@/features/approvals/queries', () => ({
+vi.mock('@/features/approvals/data/queries', () => ({
   getClaimWithOwner: mocks.getClaimWithOwner,
 }))
 
@@ -35,8 +35,8 @@ vi.mock('@/features/finance/permissions', () => ({
   isFinanceTeamMember: mocks.isFinanceTeamMember,
 }))
 
-import { submitApprovalAction } from '@/features/approvals/actions'
-import { submitFinanceAction } from '@/features/finance/actions'
+import { submitApprovalAction } from '@/features/approvals/server/actions'
+import { submitFinanceAction } from '@/features/finance/server/actions'
 import { getClaimStatusDisplayLabel } from '@/lib/utils/claim-status'
 import {
   applyApprovalTransition,

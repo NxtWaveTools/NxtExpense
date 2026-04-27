@@ -3,19 +3,21 @@ import { redirect } from 'next/navigation'
 import {
   getApprovalHistoryAction,
   getPendingApprovalsAction,
-} from '@/features/approvals/actions'
-import { ApprovalFiltersBar } from '@/features/approvals/components/approval-filters-bar'
-import { ApprovalHistoryList } from '@/features/approvals/components/approval-history-list'
-import { ApprovalList } from '@/features/approvals/components/approval-list'
-import { getApprovalStageAnalytics } from '@/features/approvals/queries/approval-analytics'
-import { getFilteredApprovalHistoryCount } from '@/features/approvals/queries/history-filters'
+} from '@/features/approvals/server/actions'
+import { ApprovalFiltersBar } from '@/features/approvals/ui/components/approval-filters-bar'
+import { ApprovalHistoryList } from '@/features/approvals/ui/components/approval-history-list'
+import { ApprovalList } from '@/features/approvals/ui/components/approval-list'
+import {
+  getApprovalStageAnalytics,
+  getFilteredApprovalHistoryCount,
+} from '@/features/approvals/data/queries'
 import { canViewApprovalHistoryAmount } from '@/features/approvals/utils/amount-visibility'
 import {
   addApprovalFiltersToParams,
   normalizeApprovalHistoryFilters,
 } from '@/features/approvals/utils/history-filters'
 import { requireCurrentUser } from '@/features/auth/queries'
-import { getClaimStatusCatalog } from '@/features/claims/queries'
+import { getClaimStatusCatalog } from '@/features/claims/data/queries'
 import { ClaimAnalyticsCards } from '@/components/ui/claim-analytics-cards'
 import { canAccessApprovals } from '@/features/employees/permissions'
 import {
