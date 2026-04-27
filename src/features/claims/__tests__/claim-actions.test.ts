@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   getClaimForDate: vi.fn(),
   insertClaim: vi.fn(),
   insertClaimItems: vi.fn(),
-  getMyClaimsPaginated: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -99,11 +98,7 @@ vi.mock('@/features/claims/mutations', async () => {
   }
 })
 
-vi.mock('@/features/claims/queries', () => ({
-  getMyClaimsPaginated: mocks.getMyClaimsPaginated,
-}))
-
-import { getMyClaimsAction, submitClaimAction } from '@/features/claims/actions'
+import { submitClaimAction } from '@/features/claims/actions'
 
 const VALID_FORM_INPUT = {
   claimDate: '06/03/2026',
@@ -213,13 +208,6 @@ describe('submitClaimAction', () => {
       claim_number: 'CLAIM-20260306-001',
     })
     mocks.insertClaimItems.mockResolvedValue(undefined)
-
-    mocks.getMyClaimsPaginated.mockResolvedValue({
-      data: [],
-      hasNextPage: false,
-      nextCursor: null,
-      limit: 10,
-    })
   })
 
   it('should reject unauthenticated requests', async () => {
@@ -411,117 +399,5 @@ describe('submitClaimAction', () => {
     expect(result.ok).toBe(false)
     expect(result.error).toBe('Date must be in DD/MM/YYYY format.')
     expect(mocks.getClaimForDate).not.toHaveBeenCalled()
-  })
-})
-
-describe('getMyClaimsAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mocks.createSupabaseServerClient.mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: {
-            user: { email: 'employee@nxtwave.co.in' },
-          },
-        }),
-      },
-    })
-
-    mocks.getEmployeeByEmail.mockResolvedValue({
-      id: 'emp-1',
-      designation_id: 'desg-1',
-    })
-
-    mocks.getEmployeeRoles.mockResolvedValue([{ role_code: 'EMPLOYEE' }])
-    mocks.canAccessEmployeeClaimsFromRoles.mockReturnValue(true)
-
-    mocks.getMyClaimsPaginated.mockResolvedValue({
-      data: [{ id: 'claim-1' }],
-      hasNextPage: false,
-      nextCursor: null,
-      limit: 10,
-    })
-  })
-
-  it('should return empty page when no user session is present', async () => {
-    // Arrange
-    mocks.createSupabaseServerClient.mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
-      },
-    })
-
-    // Act
-    const result = await getMyClaimsAction(null, 10)
-
-    // Assert
-    expect(result).toEqual({
-      data: [],
-      hasNextPage: false,
-      nextCursor: null,
-      limit: 10,
-    })
-  })
-
-  it('should return empty page when employee profile is missing', async () => {
-    // Arrange
-    mocks.getEmployeeByEmail.mockResolvedValue(null)
-
-    // Act
-    const result = await getMyClaimsAction(null, 10)
-
-    // Assert
-    expect(result).toEqual({
-      data: [],
-      hasNextPage: false,
-      nextCursor: null,
-      limit: 10,
-    })
-  })
-
-  it('should return empty page when user cannot access claims', async () => {
-    // Arrange
-    mocks.canAccessEmployeeClaimsFromRoles.mockReturnValue(false)
-
-    // Act
-    const result = await getMyClaimsAction('cursor-1', 15)
-
-    // Assert
-    expect(result).toEqual({
-      data: [],
-      hasNextPage: false,
-      nextCursor: null,
-      limit: 15,
-    })
-  })
-
-  it('should return paginated claims for authorized employees', async () => {
-    // Act
-    const result = await getMyClaimsAction('cursor-1', 10)
-
-    // Assert
-    expect(result.data).toHaveLength(1)
-    expect(mocks.getMyClaimsPaginated).toHaveBeenCalledWith(
-      expect.anything(),
-      'emp-1',
-      'cursor-1',
-      10
-    )
-  })
-
-  it('should return empty page when pagination query throws unexpectedly', async () => {
-    mocks.getMyClaimsPaginated.mockRejectedValueOnce(
-      new Error('Database timeout')
-    )
-
-    const result = await getMyClaimsAction('cursor-1', 10)
-
-    expect(result).toEqual({
-      data: [],
-      hasNextPage: false,
-      nextCursor: null,
-      limit: 10,
-    })
   })
 })
