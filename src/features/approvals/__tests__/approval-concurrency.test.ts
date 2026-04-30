@@ -28,11 +28,11 @@ vi.mock('@/lib/services/employee-service', async () => {
   }
 })
 
-vi.mock('@/features/approvals/queries', () => ({
+vi.mock('@/features/approvals/data/queries', () => ({
   getClaimWithOwner: mocks.getClaimWithOwner,
 }))
 
-vi.mock('@/features/claims/queries', () => ({
+vi.mock('@/features/claims/data/queries', () => ({
   getClaimAvailableActions: mocks.getClaimAvailableActions,
   getClaimAvailableActionsByClaimIds: vi.fn(),
 }))
@@ -48,7 +48,7 @@ vi.mock('@/lib/services/system-settings-service', async () => {
   }
 })
 
-import { submitApprovalAction } from '@/features/approvals/actions'
+import { submitApprovalAction } from '@/features/approvals/server/actions'
 
 describe('submitApprovalAction concurrency', () => {
   beforeEach(() => {

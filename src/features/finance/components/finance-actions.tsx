@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { submitFinanceAction } from '@/features/finance/actions'
+import { submitFinanceAction } from '@/features/finance/server/actions'
 import type { ClaimAvailableAction } from '@/features/claims/types'
 import {
   buildFinanceActionIntents,

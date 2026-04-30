@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { parseClaimStatusFilterValue } from '@/lib/utils/claim-status-filter'
-import { resolveClaimAllowResubmitFilterValue } from '@/lib/services/claim-status-filter-service'
+import { resolveClaimAllowResubmitFilterValue } from '@/features/claims/data/queries/claim-status-filter.query'
 
 const REJECTED_STATUS_ID = '3ae9b558-c006-427d-8ce6-13057d438d17'
 

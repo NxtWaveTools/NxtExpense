@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic'
 import {
   getFinanceDashboardAnalytics,
   getFinanceDashboardFilterOptions,
-} from '@/features/dashboard/actions/finance-dashboard'
+} from '@/features/dashboard/server/actions/finance-dashboard.actions'
 import type {
   FinanceDashboardData,
   FinanceDashboardFilterOptions,

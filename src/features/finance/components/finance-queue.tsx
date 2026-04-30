@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import type { PaginatedFinanceQueue } from '@/features/finance/types'
-import { bulkFinanceClaimsAction } from '@/features/finance/actions'
+import { bulkFinanceClaimsAction } from '@/features/finance/server/actions'
 import {
   buildFinanceActionIntents,
   getFinanceActionToneClass,

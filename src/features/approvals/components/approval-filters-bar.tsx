@@ -7,7 +7,7 @@ import { Filter } from 'lucide-react'
 
 import { CsvExportActions } from '@/components/ui/csv-export-actions'
 import { EmployeeNameSuggestionInput } from '@/components/ui/employee-name-suggestion-input'
-import { getApprovalEmployeeNameSuggestionsAction } from '@/features/approvals/actions/employee-name-suggestions'
+import { getApprovalEmployeeNameSuggestionsAction } from '@/features/approvals/server/actions'
 import { addApprovalFiltersToParams } from '@/features/approvals/utils/history-filters'
 
 import type { ClaimStatusCatalogItem } from '@/features/claims/types'

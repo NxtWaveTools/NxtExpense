@@ -6,7 +6,7 @@ import {
   getEmployeeRoles,
   hasApproverAssignments,
 } from '@/lib/services/employee-service'
-import { getDashboardAccessFromRoles } from '@/lib/services/approval-service'
+import { getDashboardAccessFromRoles } from '@/features/employees/permissions/access-from-roles'
 import { LogoutButton } from '@/features/auth/components/logout-button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { AppNavLinks } from '@/components/ui/app-nav-links'

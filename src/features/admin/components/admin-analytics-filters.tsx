@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 
 import { EmployeeNameSuggestionInput } from '@/components/ui/employee-name-suggestion-input'
-import { getAdminAnalyticsEmployeeNameSuggestionsAction } from '@/features/admin/actions/analytics-actions'
+import { getAdminAnalyticsEmployeeNameSuggestionsAction } from '@/features/admin/server/actions/analytics.actions'
 import type {
   AdminAnalyticsDateField,
   AdminAnalyticsFilterOptions,

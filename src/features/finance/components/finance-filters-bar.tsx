@@ -8,7 +8,7 @@ import { Filter } from 'lucide-react'
 import { CsvExportActions } from '@/components/ui/csv-export-actions'
 import { EmployeeNameSuggestionInput } from '@/components/ui/employee-name-suggestion-input'
 import { ApprovedHistoryExportActions } from '@/features/finance/components/approved-history-export-actions'
-import { getFinanceEmployeeNameSuggestionsAction } from '@/features/finance/actions/employee-name-suggestions'
+import { getFinanceEmployeeNameSuggestionsAction } from '@/features/finance/server/actions'
 
 import type {
   FinanceDateFilterField,

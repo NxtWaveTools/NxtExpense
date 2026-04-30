@@ -1,6 +1,6 @@
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'
 import { getEmployeeByEmail } from '@/lib/services/employee-service'
-import { getMyClaimsPaginated } from '@/features/claims/queries'
+import { getMyClaimsPaginated } from '@/features/claims/data/queries'
 import {
   buildMyClaimsCsv,
   normalizeMyClaimsFilters,

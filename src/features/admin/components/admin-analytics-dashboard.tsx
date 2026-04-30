@@ -11,7 +11,7 @@ import {
   getAdminAnalyticsClaimsPageAction,
   getAdminAnalyticsFilterOptionsAction,
   getAdminDashboardAnalyticsAction,
-} from '@/features/admin/actions/analytics-actions'
+} from '@/features/admin/server/actions/analytics.actions'
 import { AdminAnalyticsClaimsTable } from '@/features/admin/components/admin-analytics-claims-table'
 const AdminAnalyticsCharts = dynamic(
   () =>

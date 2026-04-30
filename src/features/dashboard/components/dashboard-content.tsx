@@ -22,7 +22,7 @@ import { ClaimStatusBadge } from '@/features/claims/components/claim-status-badg
 import type {
   DashboardClaimStats,
   DashboardRecentClaim,
-} from '@/features/dashboard/queries/dashboard-metrics'
+} from '@/features/claims/data/queries'
 import { formatDate } from '@/lib/utils/date'
 
 type DashboardAccess = {

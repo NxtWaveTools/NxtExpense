@@ -10,9 +10,9 @@ import nextDynamic from 'next/dynamic'
 
 import { DashboardContent } from '@/features/dashboard/components/dashboard-content'
 import {
-  getEmployeeClaimStats,
-  getRecentClaims,
-} from '@/features/dashboard/queries/dashboard-metrics'
+  getDashboardClaimStats,
+  getRecentClaimsForEmployee,
+} from '@/features/claims/data/queries'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const FinanceDashboard = nextDynamic(
@@ -100,8 +100,8 @@ export default async function DashboardPage() {
     )
   }
 
-  const statsPromise = getEmployeeClaimStats(supabase, employee.id)
-  const recentClaimsPromise = getRecentClaims(supabase, employee.id)
+  const statsPromise = getDashboardClaimStats(supabase, employee.id)
+  const recentClaimsPromise = getRecentClaimsForEmployee(supabase, employee.id)
 
   return (
     <DashboardContent

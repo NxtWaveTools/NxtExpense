@@ -5,15 +5,8 @@ import { getEmployeeRoles } from '@/lib/services/employee-service'
 import {
   getDashboardAccessFromRoles,
   canAccessEmployeeClaimsFromRoles,
-} from '@/lib/services/approval-service'
-
-type DashboardAccess = {
-  canCreateClaims: boolean
-  canViewClaims: boolean
-  canViewApprovals: boolean
-  canViewFinanceQueue: boolean
-  canViewAdmin: boolean
-}
+  type DashboardAccess,
+} from '@/features/employees/permissions/access-from-roles'
 
 export async function getDashboardAccess(
   supabase: SupabaseClient,

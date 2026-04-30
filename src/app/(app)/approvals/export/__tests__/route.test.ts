@@ -25,7 +25,7 @@ vi.mock('@/features/employees/permissions', () => ({
   canAccessApprovals: mocks.canAccessApprovals,
 }))
 
-vi.mock('@/features/approvals/queries/history-filters', () => ({
+vi.mock('@/features/approvals/data/queries', () => ({
   getAllFilteredApprovalHistory: mocks.getAllFilteredApprovalHistory,
   getFilteredApprovalHistoryPaginated:
     mocks.getFilteredApprovalHistoryPaginated,

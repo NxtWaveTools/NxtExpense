@@ -32,17 +32,14 @@ vi.mock('@/lib/services/employee-service', async () => {
   }
 })
 
-vi.mock('@/features/approvals/queries', () => ({
+vi.mock('@/features/approvals/data/queries', () => ({
   getClaimWithOwner: mocks.getClaimWithOwner,
   getPendingApprovalsPaginated: mocks.getPendingApprovalsPaginated,
-}))
-
-vi.mock('@/features/approvals/queries/history-filters', () => ({
   getFilteredApprovalHistoryPaginated:
     mocks.getFilteredApprovalHistoryPaginated,
 }))
 
-vi.mock('@/features/claims/queries', () => ({
+vi.mock('@/features/claims/data/queries', () => ({
   getClaimAvailableActions: mocks.getClaimAvailableActions,
   getClaimAvailableActionsByClaimIds: mocks.getClaimAvailableActionsByClaimIds,
 }))
@@ -68,7 +65,7 @@ import {
   getPendingApprovalsAction,
   submitApprovalAction,
   submitBulkApprovalAction,
-} from '@/features/approvals/actions'
+} from '@/features/approvals/server/actions'
 
 describe('approval actions workflow integration', () => {
   let rpcMock: ReturnType<typeof vi.fn>

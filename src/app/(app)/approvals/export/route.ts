@@ -3,7 +3,7 @@ import {
   getEmployeeByEmail,
   hasApproverAssignments,
 } from '@/lib/services/employee-service'
-import { getFilteredApprovalHistoryPaginated } from '@/features/approvals/queries/history-filters'
+import { getFilteredApprovalHistoryPaginated } from '@/features/approvals/data/queries'
 import {
   buildApprovalHistoryCsv,
   normalizeApprovalHistoryFilters,
