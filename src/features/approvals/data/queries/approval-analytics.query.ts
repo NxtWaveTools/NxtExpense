@@ -1,14 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import {
-  getFilteredClaimsByIds,
-  getLatestApprovalActionsByClaim,
-  getPaymentIssuedStatusIds,
-} from '@/features/approvals/data/repositories/approval-analytics.repository'
-import { getApproverActorByEmail } from '@/features/approvals/data/repositories/approvals.repository'
-import { getLocationIdsByApprovalLocationType } from '@/features/approvals/data/queries/location-type.query'
+  getApprovalHistoryAnalyticsRpc,
+  type ApprovalHistoryAnalyticsRpcRow,
+} from '@/features/approvals/data/rpc/approval-analytics.rpc'
+import { buildApprovalHistoryRpcArgs } from '@/features/approvals/data/rpc/approval-history-args'
 import { getPendingApprovalsSummary } from '@/features/approvals/data/queries/pending-summary.query'
-import type { PendingApprovalsFilters } from '@/features/approvals/types'
+import type { ApprovalHistoryFilters } from '@/features/approvals/types'
+import { resolveClaimAllowResubmitFilterValue } from '@/features/claims/data/queries'
+import { parseClaimStatusFilterValue } from '@/lib/utils/claim-status-filter'
 
 type ClaimMetricSummary = {
   count: number
@@ -23,7 +23,7 @@ type ApprovalAnalytics = {
   rejectedClaims: ClaimMetricSummary
 }
 
-const DEFAULT_PENDING_FILTERS: PendingApprovalsFilters = {
+const DEFAULT_APPROVAL_FILTERS: ApprovalHistoryFilters = {
   employeeName: null,
   claimStatus: null,
   claimDateFrom: null,
@@ -32,6 +32,10 @@ const DEFAULT_PENDING_FILTERS: PendingApprovalsFilters = {
   amountValue: null,
   locationType: null,
   claimDateSort: 'desc',
+  hodApprovedFrom: null,
+  hodApprovedTo: null,
+  financeApprovedFrom: null,
+  financeApprovedTo: null,
 }
 
 function createMetricSummary(): ClaimMetricSummary {
@@ -52,84 +56,69 @@ function sumMetric(metric: ClaimMetricSummary): number {
   return metric.amount
 }
 
+function toNumber(value: number | string | null | undefined): number {
+  return Number(value ?? 0)
+}
+
+function toMetricSummary(
+  count:
+    | ApprovalHistoryAnalyticsRpcRow[keyof ApprovalHistoryAnalyticsRpcRow]
+    | undefined,
+  amount:
+    | ApprovalHistoryAnalyticsRpcRow[keyof ApprovalHistoryAnalyticsRpcRow]
+    | undefined
+): ClaimMetricSummary {
+  return {
+    count: toNumber(count),
+    amount: toNumber(amount),
+  }
+}
+
 export async function getApprovalStageAnalytics(
   supabase: SupabaseClient,
   approverEmail: string,
-  filters: PendingApprovalsFilters = DEFAULT_PENDING_FILTERS
+  filters: ApprovalHistoryFilters = DEFAULT_APPROVAL_FILTERS
 ): Promise<ApprovalAnalytics> {
-  const analytics = createEmptyAnalytics()
-
-  analytics.pendingApprovals = await getPendingApprovalsSummary(
+  const pendingApprovals = await getPendingApprovalsSummary(
     supabase,
     approverEmail,
     filters
   )
 
-  const actorRow = await getApproverActorByEmail(supabase, approverEmail)
-
-  if (!actorRow) {
-    analytics.total.count = analytics.pendingApprovals.count
-    analytics.total.amount = analytics.pendingApprovals.amount
-    return analytics
-  }
-
-  const [paymentIssuedStatusIds, latestActionByClaim] = await Promise.all([
-    getPaymentIssuedStatusIds(supabase),
-    getLatestApprovalActionsByClaim(supabase, actorRow.id),
-  ])
-
-  if (latestActionByClaim.size === 0) {
-    analytics.total.count = analytics.pendingApprovals.count
-    analytics.total.amount = analytics.pendingApprovals.amount
-    return analytics
-  }
-
-  const scopedLocationIds = await getLocationIdsByApprovalLocationType(
+  const parsedStatusFilter = parseClaimStatusFilterValue(filters.claimStatus)
+  const allowResubmitFilter = await resolveClaimAllowResubmitFilterValue(
     supabase,
-    filters.locationType
+    parsedStatusFilter
   )
 
-  if (scopedLocationIds && scopedLocationIds.length === 0) {
-    analytics.total.count = analytics.pendingApprovals.count
-    analytics.total.amount = analytics.pendingApprovals.amount
-    return analytics
-  }
-
-  const filteredClaims = await getFilteredClaimsByIds(
+  const historyAnalytics = await getApprovalHistoryAnalyticsRpc(
     supabase,
-    [...latestActionByClaim.keys()],
-    filters,
-    scopedLocationIds
+    buildApprovalHistoryRpcArgs(filters, {
+      allowResubmitFilter,
+      statusId: parsedStatusFilter?.statusId ?? null,
+    })
   )
 
-  for (const claim of filteredClaims) {
-    const action = latestActionByClaim.get(claim.id)
-    const amount = Number(claim.total_amount ?? 0)
+  const analytics = createEmptyAnalytics()
 
-    if (action === 'approved') {
-      analytics.approvedClaims.count += 1
-      analytics.approvedClaims.amount += amount
-
-      if (paymentIssuedStatusIds.has(claim.status_id)) {
-        analytics.paymentIssuedClaims.count += 1
-        analytics.paymentIssuedClaims.amount += amount
-      }
-
-      continue
-    }
-
-    if (action === 'rejected') {
-      analytics.rejectedClaims.count += 1
-      analytics.rejectedClaims.amount += amount
-    }
-  }
+  analytics.pendingApprovals = pendingApprovals
+  analytics.approvedClaims = toMetricSummary(
+    historyAnalytics?.approved_count,
+    historyAnalytics?.approved_amount
+  )
+  analytics.paymentIssuedClaims = toMetricSummary(
+    historyAnalytics?.payment_issued_count,
+    historyAnalytics?.payment_issued_amount
+  )
+  analytics.rejectedClaims = toMetricSummary(
+    historyAnalytics?.rejected_count,
+    historyAnalytics?.rejected_amount
+  )
 
   analytics.total.count =
-    analytics.pendingApprovals.count +
-    analytics.approvedClaims.count +
-    analytics.rejectedClaims.count
+    pendingApprovals.count + analytics.approvedClaims.count + analytics.rejectedClaims.count
   analytics.total.amount =
-    sumMetric(analytics.pendingApprovals) +
+    sumMetric(pendingApprovals) +
     sumMetric(analytics.approvedClaims) +
     sumMetric(analytics.rejectedClaims)
 

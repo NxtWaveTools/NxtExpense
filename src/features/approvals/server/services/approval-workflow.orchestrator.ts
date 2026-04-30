@@ -25,17 +25,17 @@ export type ApprovalActionResult = {
 async function requireApproverProfile(
   supabase: SupabaseClient,
   approverEmail: string | undefined
-) {
+): Promise<string | null> {
   if (!approverEmail) {
-    return { error: 'Unauthorized request.' }
+    return 'Unauthorized request.'
   }
 
   const approver = await getEmployeeByEmail(supabase, approverEmail)
   if (!approver) {
-    return { error: 'Approver employee profile not found.' }
+    return 'Approver employee profile not found.'
   }
 
-  return { approver }
+  return null
 }
 
 async function validateNotesLength(
@@ -56,9 +56,9 @@ export async function submitApprovalWorkflow(
     allowResubmit?: boolean
   }
 ): Promise<ApprovalActionResult> {
-  const approverState = await requireApproverProfile(supabase, approverEmail)
-  if ('error' in approverState) {
-    return { ok: false, error: approverState.error }
+  const approverError = await requireApproverProfile(supabase, approverEmail)
+  if (approverError) {
+    return { ok: false, error: approverError }
   }
 
   const notesValidationError = await validateNotesLength(
@@ -124,16 +124,16 @@ export async function submitBulkApprovalWorkflow(
     allowResubmit?: boolean
   }
 ): Promise<BulkApprovalActionResult> {
-  const approverState = await requireApproverProfile(supabase, approverEmail)
-  if ('error' in approverState) {
+  const approverError = await requireApproverProfile(supabase, approverEmail)
+  if (approverError) {
     return {
       ok: false,
-      error: approverState.error,
+      error: approverError,
       succeeded: 0,
       failed: payload.claimIds.length,
       errors: payload.claimIds.map((claimId) => ({
         claimId,
-        message: approverState.error,
+        message: approverError,
       })),
     }
   }

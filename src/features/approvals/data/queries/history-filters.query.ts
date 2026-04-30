@@ -6,6 +6,7 @@ import type {
   PaginatedApprovalHistoryRecords,
 } from '@/features/approvals/types'
 import { getApprovalHistoryClaimEnrichmentByClaimId } from '@/features/approvals/data/repositories/approval-history.repository'
+import { buildApprovalHistoryRpcArgs } from '@/features/approvals/data/rpc/approval-history-args'
 import {
   getFilteredApprovalHistoryCountRpc,
   getFilteredApprovalHistoryRpc,
@@ -14,17 +15,6 @@ import {
 import { resolveClaimAllowResubmitFilterValue } from '@/features/claims/data/queries'
 import { parseClaimStatusFilterValue } from '@/lib/utils/claim-status-filter'
 import { decodeCursor, encodeCursor } from '@/lib/utils/pagination'
-
-const IST_START_TIME = 'T00:00:00+05:30'
-const IST_END_TIME = 'T23:59:59.999+05:30'
-
-function toIstDayStart(date: string | null): string | null {
-  return date ? `${date}${IST_START_TIME}` : null
-}
-
-function toIstDayEnd(date: string | null): string | null {
-  return date ? `${date}${IST_END_TIME}` : null
-}
 
 function mapHistoryRecord(
   row: FilteredApprovalHistoryRpcRow,
@@ -74,47 +64,6 @@ function toNumericCount(value: unknown): number {
   return 0
 }
 
-function buildHistoryRpcArgs(
-  filters: ApprovalHistoryFilters,
-  options: {
-    cursorCreatedAt?: string | null
-    cursorId?: string | null
-    limit?: number
-    allowResubmitFilter: boolean | null
-    statusId: string | null
-  }
-): Record<string, unknown> {
-  const args: Record<string, unknown> = {
-    p_name_search: filters.employeeName,
-    p_actor_filters: null,
-    p_claim_status_id: options.statusId,
-    p_claim_allow_resubmit: options.allowResubmitFilter,
-    p_amount_operator: filters.amountOperator,
-    p_amount_value: filters.amountValue,
-    p_location_type: filters.locationType,
-    p_hod_approved_from: toIstDayStart(filters.hodApprovedFrom),
-    p_hod_approved_to: toIstDayEnd(filters.hodApprovedTo),
-    p_finance_approved_from: toIstDayStart(filters.financeApprovedFrom),
-    p_finance_approved_to: toIstDayEnd(filters.financeApprovedTo),
-    p_claim_date_from: filters.claimDateFrom,
-    p_claim_date_to: filters.claimDateTo,
-  }
-
-  if ('limit' in options) {
-    args.p_limit = options.limit
-  }
-
-  if ('cursorCreatedAt' in options) {
-    args.p_cursor_acted_at = options.cursorCreatedAt ?? null
-  }
-
-  if ('cursorId' in options) {
-    args.p_cursor_action_id = options.cursorId ?? null
-  }
-
-  return args
-}
-
 export async function getFilteredApprovalHistoryPaginated(
   supabase: SupabaseClient,
   cursor: string | null,
@@ -131,11 +80,12 @@ export async function getFilteredApprovalHistoryPaginated(
 
   const rows = await getFilteredApprovalHistoryRpc(
     supabase,
-    buildHistoryRpcArgs(filters, {
+    buildApprovalHistoryRpcArgs(filters, {
       limit: normalizedLimit,
       cursorCreatedAt: decodedCursor?.created_at ?? null,
       cursorId: decodedCursor?.id ?? null,
       allowResubmitFilter,
+      includeActorFilters: true,
       statusId: parsedStatusFilter?.statusId ?? null,
     })
   )
@@ -181,8 +131,9 @@ export async function getFilteredApprovalHistoryCount(
 
   const data = await getFilteredApprovalHistoryCountRpc(
     supabase,
-    buildHistoryRpcArgs(filters, {
+    buildApprovalHistoryRpcArgs(filters, {
       allowResubmitFilter,
+      includeActorFilters: true,
       statusId: parsedStatusFilter?.statusId ?? null,
     })
   )
