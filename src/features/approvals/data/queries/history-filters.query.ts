@@ -84,10 +84,7 @@ function buildHistoryRpcArgs(
     statusId: string | null
   }
 ): Record<string, unknown> {
-  return {
-    p_limit: options.limit,
-    p_cursor_acted_at: options.cursorCreatedAt ?? null,
-    p_cursor_action_id: options.cursorId ?? null,
+  const args: Record<string, unknown> = {
     p_name_search: filters.employeeName,
     p_actor_filters: null,
     p_claim_status_id: options.statusId,
@@ -102,6 +99,20 @@ function buildHistoryRpcArgs(
     p_claim_date_from: filters.claimDateFrom,
     p_claim_date_to: filters.claimDateTo,
   }
+
+  if ('limit' in options) {
+    args.p_limit = options.limit
+  }
+
+  if ('cursorCreatedAt' in options) {
+    args.p_cursor_acted_at = options.cursorCreatedAt ?? null
+  }
+
+  if ('cursorId' in options) {
+    args.p_cursor_action_id = options.cursorId ?? null
+  }
+
+  return args
 }
 
 export async function getFilteredApprovalHistoryPaginated(
