@@ -37,10 +37,10 @@ vi.mock('@/lib/services/employee-service', async () => {
   }
 })
 
-vi.mock('@/lib/services/approval-service', async () => {
+vi.mock('@/features/employees/permissions/access-from-roles', async () => {
   const actual = await vi.importActual<
-    typeof import('@/lib/services/approval-service')
-  >('@/lib/services/approval-service')
+    typeof import('@/features/employees/permissions/access-from-roles')
+  >('@/features/employees/permissions/access-from-roles')
 
   return {
     ...actual,
@@ -88,10 +88,10 @@ vi.mock('@/lib/services/expense-location-service', async () => {
   }
 })
 
-vi.mock('@/features/claims/mutations', async () => {
+vi.mock('@/features/claims/data/repositories/claims.repository', async () => {
   const actual = await vi.importActual<
-    typeof import('@/features/claims/mutations')
-  >('@/features/claims/mutations')
+    typeof import('@/features/claims/data/repositories/claims.repository')
+  >('@/features/claims/data/repositories/claims.repository')
 
   return {
     ...actual,
@@ -101,11 +101,11 @@ vi.mock('@/features/claims/mutations', async () => {
   }
 })
 
-vi.mock('@/features/claims/queries', () => ({
+vi.mock('@/features/claims/data/queries', () => ({
   getMyClaimsPaginated: mocks.getMyClaimsPaginated,
 }))
 
-import { submitClaimAction } from '@/features/claims/actions'
+import { submitClaimAction } from '@/features/claims/server/actions'
 
 const BASE_LOCATION_INPUT = {
   claimDate: '06/03/2026',

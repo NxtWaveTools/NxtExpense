@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
-import { submitApprovalAction } from '@/features/approvals/actions'
+import { submitApprovalAction } from '@/features/approvals/server/actions'
 import type { ClaimAvailableAction } from '@/features/claims/types'
 import {
   getWorkflowActionAllowReclaimLabel,

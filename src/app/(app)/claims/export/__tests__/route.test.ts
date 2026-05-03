@@ -27,7 +27,7 @@ vi.mock('@/features/claims/utils/export-permissions', () => ({
   canDownloadClaimsCsv: mocks.canDownloadClaimsCsv,
 }))
 
-vi.mock('@/features/claims/queries', () => ({
+vi.mock('@/features/claims/data/queries', () => ({
   getMyClaimsPaginated: mocks.getMyClaimsPaginated,
 }))
 

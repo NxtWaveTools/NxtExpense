@@ -9,7 +9,7 @@ import type {
   FinanceDashboardFilters,
 } from '@/features/dashboard/types/finance-dashboard'
 import type { FinanceDashboardFilterOptions } from '@/features/dashboard/types/finance-dashboard'
-import { getFinanceDashboardEmployeeNameSuggestions } from '@/features/dashboard/actions/finance-dashboard'
+import { getFinanceDashboardEmployeeNameSuggestions } from '@/features/dashboard/server/actions/finance-dashboard.actions'
 import { EmployeeNameSuggestionInput } from '@/components/ui/employee-name-suggestion-input'
 
 type FinanceDashboardFiltersBarProps = {

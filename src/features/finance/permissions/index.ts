@@ -1,6 +1,6 @@
 import type { EmployeeRow } from '@/lib/services/employee-service'
 import { getEmployeeRoles } from '@/lib/services/employee-service'
-import { hasFinanceRole } from '@/lib/services/approval-service'
+import { hasFinanceRole } from '@/features/employees/permissions/access-from-roles'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function isFinanceTeamMember(

@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
 
-import { submitClaimAction } from '@/features/claims/actions'
+import { submitClaimAction } from '@/features/claims/server/actions'
 import { formatDate } from '@/lib/utils/date'
 
 import type {

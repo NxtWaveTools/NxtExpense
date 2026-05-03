@@ -1,12 +1,12 @@
-import { ClaimList } from '@/features/claims/components/claim-list'
-import { ClaimsFiltersBar } from '@/features/claims/components/claims-filters-bar'
+import { ClaimList } from '@/features/claims/ui/components/claim-list'
+import { ClaimsFiltersBar } from '@/features/claims/ui/components/claims-filters-bar'
 import { ClaimAnalyticsCards } from '@/components/ui/claim-analytics-cards'
 import {
   getClaimStatusCatalog,
   getMyClaimsStats,
   getMyClaimsTotalCount,
   getMyClaimsPaginated,
-} from '@/features/claims/queries'
+} from '@/features/claims/data/queries'
 import { requireCurrentUser } from '@/features/auth/queries'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { canAccessEmployeeClaims } from '@/features/employees/permissions'

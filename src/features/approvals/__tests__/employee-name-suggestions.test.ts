@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { getApprovalEmployeeNameSuggestions } from '@/features/approvals/queries/employee-name-suggestions'
+import { getApprovalEmployeeNameSuggestions } from '@/features/approvals/data/queries'
 
 function createSupabaseMock(result: {
   data?: unknown

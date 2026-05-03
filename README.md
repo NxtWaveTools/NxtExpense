@@ -36,9 +36,9 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000` 
 
-## Microsoft OAuth 404 Troubleshooting
+## Microsoft OAuth 404 Troubleshooting 
 
 If you see a Microsoft 404 URL that contains `/v2.0/oauth2/v2.0/authorize`, fix your Supabase Azure provider settings:
 

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 
 import { formatDate, formatDatetime } from '@/lib/utils/date'
 import { CursorPaginationControls } from '@/components/ui/cursor-pagination-controls'
-import { bulkFinanceClaimsAction } from '@/features/finance/actions'
+import { bulkFinanceClaimsAction } from '@/features/finance/server/actions'
 import {
   buildFinanceActionIntents,
   getFinanceActionToneClass,
@@ -29,7 +29,7 @@ import {
   getDataTableHeadCellClass,
 } from '@/components/ui/data-table-tokens'
 
-import { getFinanceHistoryAction } from '@/features/finance/actions'
+import { getFinanceHistoryAction } from '@/features/finance/server/actions'
 import { ClaimStatusBadge } from '@/features/claims/components/claim-status-badge'
 
 type FinanceHistoryPayload = Awaited<ReturnType<typeof getFinanceHistoryAction>>

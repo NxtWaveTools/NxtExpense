@@ -28,7 +28,7 @@ vi.mock('@/features/finance/permissions', () => ({
   isFinanceTeamMember: mocks.isFinanceTeamMember,
 }))
 
-vi.mock('@/features/claims/queries', () => ({
+vi.mock('@/features/claims/data/queries', () => ({
   getClaimAvailableActions: mocks.getClaimAvailableActions,
   getClaimAvailableActionsByClaimIds: mocks.getClaimAvailableActionsByClaimIds,
 }))
@@ -44,7 +44,7 @@ vi.mock('@/lib/services/system-settings-service', async () => {
   }
 })
 
-import { submitFinanceAction } from '@/features/finance/actions'
+import { submitFinanceAction } from '@/features/finance/server/actions'
 
 describe('submitFinanceAction concurrency', () => {
   beforeEach(() => {

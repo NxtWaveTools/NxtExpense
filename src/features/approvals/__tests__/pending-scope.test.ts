@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { getPendingApprovalScopeByActor } from '@/features/approvals/queries/pending-scope'
+import { getPendingApprovalScopeByActor } from '@/features/approvals/data/repositories/pending-scope.repository'
 
 type QueryResult = {
   data: unknown

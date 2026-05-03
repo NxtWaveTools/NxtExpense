@@ -23,9 +23,16 @@ vi.mock('@/features/finance/permissions', () => ({
   isFinanceTeamMember: mocks.isFinanceTeamMember,
 }))
 
-vi.mock('@/features/finance/queries', () => ({
-  getFinanceHistoryPaginated: mocks.getFinanceHistoryPaginated,
-}))
+vi.mock('@/features/finance/data/queries', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/finance/data/queries')
+  >('@/features/finance/data/queries')
+
+  return {
+    ...actual,
+    getFinanceHistoryPaginated: mocks.getFinanceHistoryPaginated,
+  }
+})
 
 vi.mock('@/features/finance/utils/filters', () => ({
   normalizeFinanceFilters: mocks.normalizeFinanceFilters,
